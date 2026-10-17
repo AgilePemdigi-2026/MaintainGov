@@ -1,0 +1,128 @@
+{
+  "source_name": "archive (7).zip",
+  "sha256": "243ac29f1907baade790589ced4f331fc4e6d32e78691ee8477541aacdf1bdcf",
+  "files": {
+    "Review Aplikasi Tangerang Live.csv": {
+      "bytes": 1004486,
+      "sha256": "5002e915eacea8021ec4a392e82c93100e17e59d725e368a570fc6e56fc2befa",
+      "encoding": "utf-8-sig",
+      "delimiter": ",",
+      "columns": [
+        "reviewId",
+        "userName",
+        "Review Teks",
+        "rating",
+        "thumbsUpCount",
+        "date"
+      ],
+      "parsed_records": 7149,
+      "record_width_counts": {
+        "6": 7149
+      },
+      "width_mismatch_count": 0,
+      "width_mismatch_record_numbers": [],
+      "width_mismatch_physical_end_lines": [],
+      "blank_cells_on_correct_width_records": {
+        "reviewId": 0,
+        "userName": 0,
+        "Review Teks": 0,
+        "rating": 0,
+        "thumbsUpCount": 0,
+        "date": 0
+      },
+      "exact_duplicate_excess": 0,
+      "scope_note": "Candidate-valid is structural/type validity only; no automatic cleaning or approval.",
+      "invalid_field_counts_on_correct_width_records": {},
+      "candidate_valid_records": 7149,
+      "quarantine_candidate_records": 0,
+      "duplicate_review_id_excess": 0,
+      "normalized_text_unique_on_candidates": 5385,
+      "normalized_text_duplicate_excess_on_candidates": 1764,
+      "normalized_text_duplicate_groups_on_candidates": 159,
+      "rating_counts_on_candidates": {
+        "1": 1776,
+        "2": 423,
+        "3": 486,
+        "4": 502,
+        "5": 3962
+      },
+      "date_min_on_candidates": "2016-08-18T05:35:53",
+      "date_max_on_candidates": "2026-08-05T22:11:50",
+      "timezone": "not supplied",
+      "gold_analysis_label_columns": []
+    },
+    "negative.tsv": {
+      "bytes": 82775,
+      "sha256": "b37c745c18e52fddc9cdadf2d5c114124d8cadd9a2c929694a9aa3aa88228484",
+      "encoding": "utf-8-sig",
+      "delimiter": "\t",
+      "columns": [
+        "word",
+        "weight"
+      ],
+      "parsed_records": 6608,
+      "record_width_counts": {
+        "2": 6608
+      },
+      "width_mismatch_count": 0,
+      "width_mismatch_record_numbers": [],
+      "width_mismatch_physical_end_lines": [],
+      "blank_cells_on_correct_width_records": {
+        "word": 0,
+        "weight": 0
+      },
+      "exact_duplicate_excess": 0,
+      "normalized_key_duplicate_excess": 3,
+      "normalized_keys_with_conflicting_values": 3
+    },
+    "positive.tsv": {
+      "bytes": 41462,
+      "sha256": "4d0dc2a6b2fe88a438fe5a61663f45c5cf60ebaeb019d4ca4d31c3315121c2ae",
+      "encoding": "utf-8-sig",
+      "delimiter": "\t",
+      "columns": [
+        "word",
+        "weight"
+      ],
+      "parsed_records": 3609,
+      "record_width_counts": {
+        "2": 3609
+      },
+      "width_mismatch_count": 0,
+      "width_mismatch_record_numbers": [],
+      "width_mismatch_physical_end_lines": [],
+      "blank_cells_on_correct_width_records": {
+        "word": 0,
+        "weight": 0
+      },
+      "exact_duplicate_excess": 0,
+      "normalized_key_duplicate_excess": 2,
+      "normalized_keys_with_conflicting_values": 0
+    },
+    "slang.csv": {
+      "bytes": 299613,
+      "sha256": "fece4a7e153db35c43083e061ef6b89cce724ce74ca037a8f6f5b8091a5d35fd",
+      "encoding": "utf-8-sig",
+      "delimiter": ";",
+      "columns": [
+        "slang",
+        "formal"
+      ],
+      "parsed_records": 16158,
+      "record_width_counts": {
+        "2": 16158
+      },
+      "width_mismatch_count": 0,
+      "width_mismatch_record_numbers": [],
+      "width_mismatch_physical_end_lines": [],
+      "blank_cells_on_correct_width_records": {
+        "slang": 0,
+        "formal": 0
+      },
+      "exact_duplicate_excess": 2,
+      "normalized_key_duplicate_excess": 770,
+      "normalized_keys_with_conflicting_values": 742
+    }
+  },
+  "sentiment_lexicon_overlap_unique_terms": 1142
+}
