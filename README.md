@@ -21,4 +21,3 @@ Status implementasi dicatat pada [Progress Tracker](docs/PROGRESS_TRACKER.md). T
 
 Gunakan template di `.github/` saat membuat issue dan pull request. Satu tugas memiliki satu penanggung jawab dan satu reviewer; bantuan antaranggota tetap diperbolehkan.
 
-Petunjuk tambahan untuk coding agent tersedia di [AGENTS.md](AGENTS.md).
