@@ -1,0 +1,24 @@
+# Bahan kerja sementara saat membaca dokumen
+tmp/
+
+# Dataset mentah lokal; provenance dan fixture tersamar dikelola terpisah
+/data/raw/
+
+# Rahasia konfigurasi; contoh tanpa rahasia boleh dibagikan
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.pem
+*.key
+
+# Dependensi dan keluaran yang dapat dibangun ulang
+node_modules/
+.next/
+vendor/
+.venv/
+__pycache__/
+.pytest_cache/
+
+# File log aplikasi lokal
+*.log
