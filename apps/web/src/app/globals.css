@@ -1,0 +1,366 @@
+/* Token diambil dari PNG Figma "Login - MaintainGov" (frame 1280x800). */
+:root {
+  --navy: #000033;
+  --blue: #003399;
+  --blue-light: #99bbff;
+  --blue-line: #d6e4ff;
+  --text-body: #47476c;
+  --text-muted: #73738f;
+  --placeholder: #6b7489;
+  --radius: 6px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  font-family: var(--font-sans), system-ui, sans-serif;
+  color: var(--navy);
+  background: #fff;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---------- Layout dua panel (560 : 720 pada 1280px) ---------- */
+.login {
+  display: grid;
+  grid-template-columns: 7fr 9fr;
+  min-height: 100vh;
+}
+
+/* ---------- Panel kiri ---------- */
+.brand {
+  display: flex;
+  flex-direction: column;
+  padding: 48px;
+  color: #fff;
+  background: linear-gradient(
+    135deg,
+    #000033 0%,
+    #000066 20%,
+    #003399 40%,
+    #3366cc 58%,
+    #99bbff 75%
+  );
+}
+
+.brand__head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brand__logo {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: var(--blue-light);
+  color: var(--navy);
+}
+
+.brand__name {
+  font-size: 18px;
+  line-height: 20px;
+  font-weight: 600;
+}
+
+.brand__tagline {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--blue-light);
+}
+
+.brand__main {
+  margin-block: auto;
+}
+
+.brand__title {
+  margin: 0;
+  max-width: 464px;
+  font-size: 30px;
+  line-height: 38px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.brand__lead {
+  margin: 16px 0 0;
+  max-width: 420px;
+  font-size: 14px;
+  line-height: 22px;
+  color: var(--blue-light);
+}
+
+.brand__list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 26px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.brand__list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  line-height: 20px;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.brand__check {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+}
+
+.brand__foot {
+  font-size: 13px;
+  line-height: 20px;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+/* ---------- Panel kanan ---------- */
+.panel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  background: #fff;
+}
+
+.form {
+  width: 100%;
+  max-width: 400px;
+}
+
+.form__title {
+  margin: 0;
+  font-size: 28px;
+  line-height: 36px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--navy);
+}
+
+.form__lead {
+  margin: 8px 0 0;
+  font-size: 15px;
+  line-height: 22px;
+  color: var(--text-body);
+}
+
+.form__fields {
+  margin-top: 18px;
+}
+
+.field + .field {
+  margin-top: 20px;
+}
+
+.field__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.field__label {
+  font-size: 13px;
+  line-height: 14px;
+  font-weight: 500;
+  color: var(--text-body);
+}
+
+.link {
+  font-size: 13px;
+  line-height: 14px;
+  font-weight: 500;
+  color: var(--blue);
+  text-decoration: none;
+}
+
+.input {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 42px;
+  padding: 0 14px;
+  border: 1px solid var(--blue-light);
+  border-radius: var(--radius);
+  background: #fff;
+  color: var(--placeholder);
+}
+
+.input:focus-within {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(0, 51, 153, 0.15);
+}
+
+.input input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 14px;
+  color: var(--navy);
+}
+
+.input input::placeholder {
+  color: var(--placeholder);
+}
+
+.input__toggle {
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--placeholder);
+  cursor: pointer;
+}
+
+.remember {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 20px;
+  font-size: 14px;
+  line-height: 18px;
+  color: var(--navy);
+  cursor: pointer;
+}
+
+.remember input {
+  position: absolute;
+  opacity: 0;
+}
+
+.remember__box {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--blue-light);
+  border-radius: 4px;
+  background: #fff;
+  color: #fff;
+}
+
+.remember input:checked + .remember__box {
+  border-color: var(--blue);
+  background: var(--blue);
+}
+
+.remember input:not(:checked) + .remember__box svg {
+  visibility: hidden;
+}
+
+.remember input:focus-visible + .remember__box {
+  box-shadow: 0 0 0 3px rgba(0, 51, 153, 0.25);
+}
+
+.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 42px;
+  border-radius: var(--radius);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn--primary {
+  margin-top: 20px;
+  border: 0;
+  background: var(--blue);
+  color: #fff;
+}
+
+.btn--outline {
+  margin-top: 20px;
+  border: 1px solid var(--blue-light);
+  background: #fff;
+  color: var(--navy);
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 20px;
+  font-size: 13px;
+  line-height: 15px;
+  color: var(--text-muted);
+}
+
+.divider::before,
+.divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--blue-line);
+}
+
+.signup {
+  margin: 20px 0 0;
+  text-align: center;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--text-body);
+}
+
+.signup a {
+  margin-left: 4px;
+  font-weight: 700;
+  color: var(--blue);
+  text-decoration: none;
+}
+
+.meta {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin: 17px 0 0;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-muted);
+}
+
+.meta a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* ---------- Mobile: panel kiri disembunyikan ---------- */
+@media (max-width: 900px) {
+  .login {
+    grid-template-columns: 1fr;
+  }
+  .brand {
+    display: none;
+  }
+}
