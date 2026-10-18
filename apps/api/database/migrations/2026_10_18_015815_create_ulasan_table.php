@@ -32,7 +32,10 @@ return new class extends Migration
                   ->onDelete('restrict');
         });
 
-        DB::statement('ALTER TABLE ulasan ADD CONSTRAINT ulasan_rating_range CHECK (rating BETWEEN 1 AND 5)');
+        // FIX: Bungkus dengan kondisi SQLite check
+        if (DB::getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE ulasan ADD CONSTRAINT ulasan_rating_range CHECK (rating BETWEEN 1 AND 5)');
+        }
     }
 
     public function down(): void
