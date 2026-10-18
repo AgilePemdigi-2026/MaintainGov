@@ -22,3 +22,11 @@ __pycache__/
 
 # File log aplikasi lokal
 *.log
+
+# Artefak riset privat dan file editor sementara
+*.joblib
+*.pkl
+*.pickle
+MaintainGov_artefak_privat*.zip
+MaintainGov_hasil_lengkap*.zip
+~$*

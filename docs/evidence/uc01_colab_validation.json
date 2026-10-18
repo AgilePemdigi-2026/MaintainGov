@@ -1,0 +1,298 @@
+{
+  "client_date": "2026-10-18",
+  "scope": "UC01 / W10-03 and W10-07 research notebook; application remains In Progress",
+  "notebook": "notebooks/MaintainGov_UC01_End_to_End_Colab.ipynb",
+  "version": "1.2",
+  "notebook_sha256": "89383aac3e997920dc281a7a29715863dca9433072117a9bfb20b3387f29852d",
+  "cells": 92,
+  "executed_code_cells": 43,
+  "embedded_figures": 19,
+  "execution": "All executable cells in final notebook completed top-to-bottom locally. Markdown-only refinements afterwards; executable cell sources exactly match final executed copy.",
+  "code_comments": 0,
+  "source_rows": 7149,
+  "holdout_rows": 1632,
+  "target_mode": "rating_proxy",
+  "metrics_independently_recomputed": {
+    "accuracy": 0.84375,
+    "balanced_accuracy": 0.6282346302813376,
+    "macro_f1": 0.6229199730419926
+  },
+  "macro_f1_group_bootstrap_ci95": [
+    0.5906346845831236,
+    0.6496266267597554
+  ],
+  "neutral_recall": 0.1308411214953271,
+  "validation_runs": [
+    {
+      "purpose": "Final executable cells, complete real dataset, isolated worker, simulated Colab upload/download.",
+      "python": "3.13.16",
+      "platform": "Windows-11-10.0.26200-SP0",
+      "executed_code_cells": 43,
+      "errors": 0,
+      "figures_verified_on_disk": 19,
+      "seconds": 474.63,
+      "colab_upload_calls": 1,
+      "colab_download_calls": 1,
+      "mode": "rating_proxy",
+      "usable_rows": 7149,
+      "source_zip_sha256": "243ac29f1907baade790589ced4f331fc4e6d32e78691ee8477541aacdf1bdcf",
+      "code_checks": {
+        "runtime_checks": {
+          "numpy_strings": true,
+          "numpy_numeric": true,
+          "scipy_sparse": true,
+          "pandas_frame": true,
+          "quoted_comma_newline": true,
+          "wrong_width_quarantined": true,
+          "duplicate_header_rejected": true,
+          "empty_table_rejected": true,
+          "missing_zip_members_rejected": true,
+          "zip_parent_path_rejected": true,
+          "zip_absolute_path_rejected": true,
+          "zip_drive_path_rejected": true,
+          "zip_duplicate_basename_rejected": true
+        },
+        "validation_checks": {
+          "train_test_group_overlap_zero": true,
+          "cv_group_overlap_zero": true,
+          "target_metadata_not_features": true,
+          "negation_preserved": true,
+          "unicode_case_whitespace": true,
+          "email_masked": true,
+          "long_number_masked": true,
+          "overlap_lexicon_removed": true,
+          "features_nonnegative": true,
+          "stable_prediction": true,
+          "finite_metrics": true,
+          "feature_dimension_matches": true
+        },
+        "artifact_checks": {
+          "fresh_process_predictions_match": true,
+          "invalid_inference_inputs_rejected": true,
+          "all_review_results_exported": true,
+          "case_members_unique": true,
+          "case_members_traceable": true,
+          "json_handoff_readable": true,
+          "negated_slow_not_issue": true,
+          "synthetic_login_rule": true
+        },
+        "archive_checks": {
+          "public_zip_integrity": true,
+          "private_files_not_in_public_zip": true,
+          "metrics_in_public_zip": true,
+          "private_zip_integrity": true,
+          "inference_bundle_complete": true
+        }
+      },
+      "executed_notebook_sha256": "cadf0b7962dd8c0e90515b66a96365f984105185416c74de7fca411b1560a26f"
+    },
+    {
+      "purpose": "Full real-data Python 3.12 run; base v1.2 bootstrap before final startup robustness refinements.",
+      "python": "3.12.14",
+      "platform": "Windows-11-10.0.26200-SP0",
+      "executed_code_cells": 43,
+      "errors": 0,
+      "figures_verified_on_disk": 19,
+      "seconds": 406.64,
+      "colab_upload_calls": 0,
+      "colab_download_calls": 0,
+      "mode": "rating_proxy",
+      "usable_rows": 7149,
+      "source_zip_sha256": "243ac29f1907baade790589ced4f331fc4e6d32e78691ee8477541aacdf1bdcf",
+      "code_checks": {
+        "runtime_checks": {
+          "numpy_strings": true,
+          "numpy_numeric": true,
+          "scipy_sparse": true,
+          "pandas_frame": true,
+          "quoted_comma_newline": true,
+          "wrong_width_quarantined": true,
+          "duplicate_header_rejected": true,
+          "empty_table_rejected": true,
+          "missing_zip_members_rejected": true,
+          "zip_parent_path_rejected": true,
+          "zip_absolute_path_rejected": true,
+          "zip_drive_path_rejected": true,
+          "zip_duplicate_basename_rejected": true
+        },
+        "validation_checks": {
+          "train_test_group_overlap_zero": true,
+          "cv_group_overlap_zero": true,
+          "target_metadata_not_features": true,
+          "negation_preserved": true,
+          "unicode_case_whitespace": true,
+          "email_masked": true,
+          "long_number_masked": true,
+          "overlap_lexicon_removed": true,
+          "features_nonnegative": true,
+          "stable_prediction": true,
+          "finite_metrics": true,
+          "feature_dimension_matches": true
+        },
+        "artifact_checks": {
+          "fresh_process_predictions_match": true,
+          "invalid_inference_inputs_rejected": true,
+          "all_review_results_exported": true,
+          "case_members_unique": true,
+          "case_members_traceable": true,
+          "json_handoff_readable": true,
+          "negated_slow_not_issue": true,
+          "synthetic_login_rule": true
+        },
+        "archive_checks": {
+          "public_zip_integrity": true,
+          "private_files_not_in_public_zip": true,
+          "metrics_in_public_zip": true,
+          "private_zip_integrity": true,
+          "inference_bundle_complete": true
+        }
+      },
+      "executed_notebook_sha256": "f25ae38e59c9323a611f416087e51c62d3e237a1bb2b54ee5d012d2f39713d32"
+    },
+    {
+      "purpose": "Full real-data cold creation and installation of isolated worker; base v1.2 bootstrap.",
+      "python": "3.13.16",
+      "platform": "Windows-11-10.0.26200-SP0",
+      "executed_code_cells": 43,
+      "errors": 0,
+      "figures_verified_on_disk": 19,
+      "seconds": 929.97,
+      "colab_upload_calls": 1,
+      "colab_download_calls": 1,
+      "mode": "rating_proxy",
+      "usable_rows": 7149,
+      "source_zip_sha256": "243ac29f1907baade790589ced4f331fc4e6d32e78691ee8477541aacdf1bdcf",
+      "code_checks": {
+        "runtime_checks": {
+          "numpy_strings": true,
+          "numpy_numeric": true,
+          "scipy_sparse": true,
+          "pandas_frame": true,
+          "quoted_comma_newline": true,
+          "wrong_width_quarantined": true,
+          "duplicate_header_rejected": true,
+          "empty_table_rejected": true,
+          "missing_zip_members_rejected": true,
+          "zip_parent_path_rejected": true,
+          "zip_absolute_path_rejected": true,
+          "zip_drive_path_rejected": true,
+          "zip_duplicate_basename_rejected": true
+        },
+        "validation_checks": {
+          "train_test_group_overlap_zero": true,
+          "cv_group_overlap_zero": true,
+          "target_metadata_not_features": true,
+          "negation_preserved": true,
+          "unicode_case_whitespace": true,
+          "email_masked": true,
+          "long_number_masked": true,
+          "overlap_lexicon_removed": true,
+          "features_nonnegative": true,
+          "stable_prediction": true,
+          "finite_metrics": true,
+          "feature_dimension_matches": true
+        },
+        "artifact_checks": {
+          "fresh_process_predictions_match": true,
+          "invalid_inference_inputs_rejected": true,
+          "all_review_results_exported": true,
+          "case_members_unique": true,
+          "case_members_traceable": true,
+          "json_handoff_readable": true,
+          "negated_slow_not_issue": true,
+          "synthetic_login_rule": true
+        },
+        "archive_checks": {
+          "public_zip_integrity": true,
+          "private_files_not_in_public_zip": true,
+          "metrics_in_public_zip": true,
+          "private_zip_integrity": true,
+          "inference_bundle_complete": true
+        }
+      },
+      "executed_notebook_sha256": "2703d3b0947b908616f66b9732bdf36f5403ffdbf61fc201389fa5e902b1913f"
+    },
+    {
+      "purpose": "Synthetic software fixture only: human-mode schema, 4 classes, no-case path, stale host NumPy version, automatic ZIP download. Not human sentiment evaluation.",
+      "python": "3.13.16",
+      "platform": "Windows-11-10.0.26200-SP0",
+      "executed_code_cells": 43,
+      "errors": 0,
+      "figures_verified_on_disk": 17,
+      "seconds": 82.52,
+      "colab_upload_calls": 1,
+      "colab_download_calls": 1,
+      "mode": "human",
+      "usable_rows": 192,
+      "source_zip_sha256": "91c14eaa4cf6ad7e7be6c8368263a85ce9d66c13f963a5787ca4d042a5c2ae6c",
+      "code_checks": {
+        "runtime_checks": {
+          "numpy_strings": true,
+          "numpy_numeric": true,
+          "scipy_sparse": true,
+          "pandas_frame": true,
+          "quoted_comma_newline": true,
+          "wrong_width_quarantined": true,
+          "duplicate_header_rejected": true,
+          "empty_table_rejected": true,
+          "missing_zip_members_rejected": true,
+          "zip_parent_path_rejected": true,
+          "zip_absolute_path_rejected": true,
+          "zip_drive_path_rejected": true,
+          "zip_duplicate_basename_rejected": true
+        },
+        "validation_checks": {
+          "train_test_group_overlap_zero": true,
+          "cv_group_overlap_zero": true,
+          "target_metadata_not_features": true,
+          "negation_preserved": true,
+          "unicode_case_whitespace": true,
+          "email_masked": true,
+          "long_number_masked": true,
+          "overlap_lexicon_removed": true,
+          "features_nonnegative": true,
+          "stable_prediction": true,
+          "finite_metrics": true,
+          "feature_dimension_matches": true
+        },
+        "artifact_checks": {
+          "fresh_process_predictions_match": true,
+          "invalid_inference_inputs_rejected": true,
+          "all_review_results_exported": true,
+          "case_members_unique": true,
+          "case_members_traceable": true,
+          "json_handoff_readable": true,
+          "negated_slow_not_issue": true,
+          "synthetic_login_rule": true
+        },
+        "archive_checks": {
+          "public_zip_integrity": true,
+          "private_files_not_in_public_zip": true,
+          "metrics_in_public_zip": true,
+          "private_zip_integrity": true,
+          "inference_bundle_complete": true
+        }
+      },
+      "executed_notebook_sha256": "cc071c78b752b0b385f27373f73d3dd652c1aa50707037206b1933f0f200863a"
+    }
+  ],
+  "static_regression_suite": "5 notebook contract tests passed: schema/syntax, no code comments, no scientific imports in host cells, automatic upload/single combined download, worker execution for analysis.",
+  "visual_qa": {
+    "reviewed_figures": 19,
+    "method": "5 contact sheets plus individual yearly-rating chart; rendered HTML top and download section inspected in local browser.",
+    "final_pngs_pixel_identical_to_reviewed_py312": 19,
+    "different_pngs": []
+  },
+  "download": {
+    "filename": "MaintainGov_hasil_lengkap.zip",
+    "nested_zip_crc_checks": "passed",
+    "contains_private_artifacts": true
+  },
+  "raw_dataset_embedded": false,
+  "google_colab_ui": "Not exercised in a live Google Colab account. Python upload/download branches tested with local files shim; no browser permission or network guarantee.",
+  "linux_execution": "Not executed; package wheel availability for Python 3.13 / manylinux checked separately.",
+  "human_label_evaluation": "Not executed: supplied data has no reviewed human sentiment labels. Synthetic fixture validates code paths only.",
+  "application_acceptance": "Not established by notebook; Laravel/FastAPI/MySQL integration, BDD, SRS NFR checks and PO acceptance remain separate.",
+  "commit_push": "not performed",
+  "git_diff_check": "git diff --check and git diff --cached --check passed; final JSON and notebook schema validated"
+}

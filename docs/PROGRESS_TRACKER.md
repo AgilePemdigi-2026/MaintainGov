@@ -32,7 +32,7 @@ Perkiraan waktu belum mencakup rapat, review, dan bantuan antaranggota. Isi jam 
 | --- | --- | ---: | ---: | --- | --- |
 | Login dan Hak Akses | Demas | 1 | 4 | Belum diverifikasi | Belum diisi |
 | Logout | Demas | 1 | 1 | Belum diverifikasi | Belum diisi |
-| UC01 Menganalisis Feedback | Gerard | 1 | 5 | Belum diverifikasi | Profil dataset tersedia; implementasi belum diverifikasi |
+| UC01 Menganalisis Feedback | Gerard | 1 | 5 | In Progress; belum Done | [Run Colab](../notebooks/runs/MaintainGov_UC01_run.ipynb), [evidence](evidence/uc01-colab-run/) dan [9 tes prototipe lokal](evidence/uc01_fastapi_local_validation.json); integrasi Laravel/MySQL dan penerimaan belum selesai |
 | UC02 Validasi Case | Demas | 2 | 3 | Belum diverifikasi | Belum diisi |
 | UC03 Edit Backlog | Valisha | 2 | 2 | Belum diverifikasi | Belum diisi |
 | UC04 Pengerjaan Issue | Hanif | 2 | 4 | Belum diverifikasi | Belum diisi |

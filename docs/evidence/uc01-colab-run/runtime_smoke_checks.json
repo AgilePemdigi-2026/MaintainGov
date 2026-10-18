@@ -1,0 +1,15 @@
+{
+  "numpy_strings": true,
+  "numpy_numeric": true,
+  "scipy_sparse": true,
+  "pandas_frame": true,
+  "quoted_comma_newline": true,
+  "wrong_width_quarantined": true,
+  "duplicate_header_rejected": true,
+  "empty_table_rejected": true,
+  "missing_zip_members_rejected": true,
+  "zip_parent_path_rejected": true,
+  "zip_absolute_path_rejected": true,
+  "zip_drive_path_rejected": true,
+  "zip_duplicate_basename_rejected": true
+}

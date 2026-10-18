@@ -1,0 +1,138 @@
+{
+  "evidence": [
+    {
+      "file": "archive_smoke_checks.json",
+      "bytes": 180
+    },
+    {
+      "file": "artifact_smoke_checks.json",
+      "bytes": 293
+    },
+    {
+      "file": "cv_folds.csv",
+      "bytes": 149
+    },
+    {
+      "file": "dataset_audit.json",
+      "bytes": 400
+    },
+    {
+      "file": "feature_ablation.csv",
+      "bytes": 474
+    },
+    {
+      "file": "feature_selection_counts.csv",
+      "bytes": 62
+    },
+    {
+      "file": "figures/01_rating_missing.png",
+      "bytes": 79323
+    },
+    {
+      "file": "figures/02_monthly_reviews.png",
+      "bytes": 70642
+    },
+    {
+      "file": "figures/03_length_duplicates.png",
+      "bytes": 69854
+    },
+    {
+      "file": "figures/04_feature_eda.png",
+      "bytes": 119139
+    },
+    {
+      "file": "figures/05_lexicon_sentiment.png",
+      "bytes": 116852
+    },
+    {
+      "file": "figures/06_grouped_split.png",
+      "bytes": 44497
+    },
+    {
+      "file": "figures/07_model_comparison.png",
+      "bytes": 43808
+    },
+    {
+      "file": "figures/08_tuning.png",
+      "bytes": 38400
+    },
+    {
+      "file": "figures/09_ablation.png",
+      "bytes": 31031
+    },
+    {
+      "file": "figures/10_feature_selection.png",
+      "bytes": 34952
+    },
+    {
+      "file": "figures/11_learning_curve.png",
+      "bytes": 54864
+    },
+    {
+      "file": "figures/12_test_confusion.png",
+      "bytes": 70108
+    },
+    {
+      "file": "figures/13_group_bootstrap.png",
+      "bytes": 42201
+    },
+    {
+      "file": "figures/14_precision_recall.png",
+      "bytes": 81714
+    },
+    {
+      "file": "figures/15_error_analysis.png",
+      "bytes": 82804
+    },
+    {
+      "file": "figures/16_maintain_categories_priority.png",
+      "bytes": 85039
+    },
+    {
+      "file": "figures/17_case_priority.png",
+      "bytes": 128119
+    },
+    {
+      "file": "figures/18_yearly_rating_mix.png",
+      "bytes": 83963
+    },
+    {
+      "file": "figures/19_per_class_quality.png",
+      "bytes": 42400
+    },
+    {
+      "file": "learning_curve.json",
+      "bytes": 298
+    },
+    {
+      "file": "metrics_and_provenance.json",
+      "bytes": 3485
+    },
+    {
+      "file": "model_card.md",
+      "bytes": 854
+    },
+    {
+      "file": "model_comparison.csv",
+      "bytes": 611
+    },
+    {
+      "file": "resource_audit.csv",
+      "bytes": 82
+    },
+    {
+      "file": "runtime_smoke_checks.json",
+      "bytes": 428
+    },
+    {
+      "file": "tuning_results.csv",
+      "bytes": 3247
+    },
+    {
+      "file": "validation_checks.json",
+      "bytes": 394
+    }
+  ],
+  "private_file_count": 19,
+  "raw_dataset_in_evidence": false
+}

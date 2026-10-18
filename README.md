@@ -21,3 +21,14 @@ SRS, sprint planning, dan panduan monitoring tersimpan di `docs/references/`.
 Progres diisi setelah pengerjaan dan pengujian dilakukan. Target yang tertulis di rencana belum berarti fiturnya sudah selesai.
 
 Template issue dan pull request tersedia di `.github/`. Setiap tugas memiliki satu penanggung jawab dan satu reviewer. Anggota lain tetap bisa membantu jika dibutuhkan.
+
+## Hasil analisis UC01
+
+- [Notebook Colab](notebooks/MaintainGov_UC01_End_to_End_Colab.ipynb): Run all, input ZIP, analisis dan ekspor.
+- [Hasil run kelompok](notebooks/runs/MaintainGov_UC01_run.ipynb) dan [evidence agregat](docs/evidence/uc01-colab-run/).
+- [Prototipe inference dengan model Colab](experiments/uc01-api/README.md) dan [hasil pengujian lokal](docs/evidence/uc01_fastapi_local_validation.json).
+
+Prototipe berada di `experiments/uc01-api` untuk handoff W10-07/W10-08.
+Layanan `services/analysis` dari setup kelompok tetap tersedia. Endpoint dan
+kontrak perlu diselaraskan sebelum integrasi Laravel. Model serta hasil per
+ulasan disimpan privat; notebook belum menutup penerimaan UC01 atau persistensi MySQL.

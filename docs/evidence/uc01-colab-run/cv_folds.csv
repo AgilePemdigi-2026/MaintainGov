@@ -1,0 +1,4 @@
+fold,train_rows,validation_rows,train_groups,validation_groups,group_overlap
+1,3846,1671,2858,1398,0
+2,3802,1715,2830,1426,0
+3,3386,2131,2824,1432,0
