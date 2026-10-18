@@ -1,0 +1,31 @@
+{
+  "scope": "Downloaded FastAPI UC01 prototype only; not Laravel/MySQL integration",
+  "python": "3.13.16",
+  "numpy": "2.2.6",
+  "scikit-learn": "1.6.1",
+  "dependency_check": "pip check passed",
+  "pytest": {
+    "passed": 9,
+    "skipped": 0,
+    "warnings": 1,
+    "warning": "Starlette TestClient httpx deprecation"
+  },
+  "http_checks": {
+    "health": "passed; actual model loaded",
+    "docs": "HTTP 200",
+    "json_analysis": "HTTP 200",
+    "csv_analysis": "HTTP 200"
+  },
+  "json_summary": {
+    "total_reviews": 4,
+    "candidate_issue_reviews": 3,
+    "manual_review_reviews": 1,
+    "candidate_cases": 3
+  },
+  "csv_audit": {
+    "accepted": 3,
+    "quarantined": 0
+  },
+  "persisted_to_mysql": false,
+  "launcher": "JALANKAN_API.cmd"
+}
