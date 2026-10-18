@@ -1,0 +1,47 @@
+### 1. Test Login
+POST http://localhost:8000/api/v1/auth/login
+Content-Type: application/json
+Accept: application/json
+
+{
+  "email": "tim@maintaingov.test",
+  "password": "password123"
+}
+
+### 2. Test Get Me (Pastikan server jalan & kamu sudah login)
+# Catatan: Karena ini cookie-based, REST Client akan otomatis menyimpan cookie dari response login sebelumnya!
+GET http://localhost:8000/api/v1/auth/me
+Accept: application/json
+
+### 3. Test Logout
+POST http://localhost:8000/api/v1/auth/logout
+Accept: application/json
+
+### 4. Test Akses Ditolak (Developer coba akses area Tim Maintenance)
+POST http://localhost:8000/api/v1/auth/login
+Content-Type: application/json
+Accept: application/json
+
+{
+  "email": "dev@maintaingov.test",
+  "password": "password123"
+}
+
+### 5. Test Dashboard Tim Maintenance (Setelah login sebagai Tim Maintenance)
+GET http://localhost:8000/api/v1/tim-maintenance/dashboard
+Accept: application/json
+
+
+### 1. Login sebagai Developer
+POST http://localhost:8000/api/v1/auth/login
+Content-Type: application/json
+Accept: application/json
+
+{
+  "email": "dev@maintaingov.test",
+  "password": "password123"
+}
+
+### 2. Coba akses Dashboard Tim Maintenance (HARUS DITOLAK)
+GET http://localhost:8000/api/v1/tim-maintenance/dashboard
+Accept: application/json
