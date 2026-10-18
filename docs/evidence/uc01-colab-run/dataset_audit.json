@@ -1,0 +1,16 @@
+{
+  "correct_width_records": 7149,
+  "malformed_records": 0,
+  "quarantined_records": 0,
+  "usable_records": 7149,
+  "invalid_field_counts": {
+    "blank_id": 0,
+    "blank_text": 0,
+    "invalid_rating": 0,
+    "invalid_date": 0,
+    "duplicate_id": 0,
+    "invalid_thumbs": 0
+  },
+  "source_sha256": "243ac29f1907baade790589ced4f331fc4e6d32e78691ee8477541aacdf1bdcf",
+  "timezone": "not supplied"
+}

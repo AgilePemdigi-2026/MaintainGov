@@ -1,0 +1,12 @@
+# Exact ML artifact versions as recorded in Colab 2026-10-18.
+numpy==2.2.6
+pandas==2.2.3
+scipy==1.15.3
+scikit-learn==1.6.1
+joblib==1.5.1
+# Web service runtime versions: compatible known-good major families.
+fastapi>=0.115,<1
+uvicorn[standard]>=0.30,<1
+python-multipart>=0.0.9,<1
+httpx>=0.27,<1
+pytest>=8,<10

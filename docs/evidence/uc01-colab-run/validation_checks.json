@@ -1,0 +1,14 @@
+{
+  "train_test_group_overlap_zero": true,
+  "cv_group_overlap_zero": true,
+  "target_metadata_not_features": true,
+  "negation_preserved": true,
+  "unicode_case_whitespace": true,
+  "email_masked": true,
+  "long_number_masked": true,
+  "overlap_lexicon_removed": true,
+  "features_nonnegative": true,
+  "stable_prediction": true,
+  "finite_metrics": true,
+  "feature_dimension_matches": true
+}

@@ -1,0 +1,9 @@
+{
+  "batch_id": "batch-001",
+  "reviews": [
+    {"review_id": "r-1", "text": "Gak bisa login sejak pembaruan aplikasi."},
+    {"review_id": "r-2", "text": "Aplikasi tidak lambat dan pelayanannya bagus."},
+    {"review_id": "r-3", "text": "Mohon tambah fitur cetak dokumen."},
+    {"review_id": "r-4", "text": "Aplikasi sering keluar sendiri."}
+  ]
+}

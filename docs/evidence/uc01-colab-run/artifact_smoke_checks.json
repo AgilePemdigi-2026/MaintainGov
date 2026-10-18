@@ -1,0 +1,10 @@
+{
+  "fresh_process_predictions_match": true,
+  "invalid_inference_inputs_rejected": true,
+  "all_review_results_exported": true,
+  "case_members_unique": true,
+  "case_members_traceable": true,
+  "json_handoff_readable": true,
+  "negated_slow_not_issue": true,
+  "synthetic_login_rule": true
+}

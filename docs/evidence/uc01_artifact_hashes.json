@@ -1,0 +1,9 @@
+{
+  "purpose": "Match private Colab artifacts during local handoff; artifacts are not committed.",
+  "sha256": {
+    "sentiment_pipeline.joblib": "3aa3bf587c44eec0e3991b549a020ebe050935528b7a527fa02a3e00f24d0872",
+    "slang_map.json": "3c23b0fab3b66ec70ee12dd27e6cc7c2c01f851e652f58bab437e8ef4aa23711",
+    "domain_rules.json": "c3cb990558018b78990ebce701a8de359b23fa8aea9d8a84a45fbe3ed59d951d",
+    "maintain_gov_preprocess.py": "619d356b97dfac1fff19c3e4f104f4aad63614adf1600321925bb466218a4d76"
+  }
+}
