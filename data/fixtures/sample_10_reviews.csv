@@ -1,0 +1,11 @@
+reviewId,userName,content,score,thumbsUpCount,reviewCreatedVersion,at
+rev-001,Pengguna A,Tidak bisa login setelah update terbaru. Sudah coba berkali-kali tapi tetap gagal.,1,5,4.2.0,2026-01-15 08:30:00
+rev-002,Pengguna B,"Aplikasi bagus, sangat membantu untuk layanan publik.",5,12,4.2.0,2026-01-15 09:00:00
+rev-003,Pengguna C,"Loading lama sekali, sering timeout waktu buka halaman utama.",2,8,4.1.9,2026-01-14 14:20:00
+rev-004,Pengguna D,Fitur pembayaran error terus. Uang sudah terpotong tapi status belum berubah.,1,20,4.2.0,2026-01-15 10:45:00
+rev-005,Pengguna E,Lumayan lah sudah lebih baik dari versi sebelumnya.,3,2,4.2.0,2026-01-15 11:00:00
+rev-006,Pengguna F,"Notifikasi tidak muncul, padahal sudah diaktifkan di pengaturan.",2,6,4.1.9,2026-01-13 16:30:00
+rev-007,Pengguna G,Mantap aplikasinya. Pelayanan jadi lebih cepat.,5,15,4.2.0,2026-01-15 12:00:00
+rev-008,Pengguna H,"Crash terus di HP Samsung saya, tolong diperbaiki.",1,9,4.2.0,2026-01-15 13:15:00
+rev-009,Pengguna I,Menu pengaduan susah dicari. Harusnya ada di halaman utama.,2,4,4.1.8,2026-01-12 08:00:00
+rev-010,Pengguna J,Sudah lama pakai aplikasi ini. Cukup puas dengan layanannya.,4,7,4.2.0,2026-01-15 14:30:00
