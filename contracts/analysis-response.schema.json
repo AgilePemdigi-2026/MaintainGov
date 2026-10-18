@@ -1,0 +1,43 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AnalyzeResponse",
+  "description": "Kontrak internal respons FastAPI → Laravel",
+  "type": "object",
+  "required": ["schema_version", "analysis_version", "batch_id", "results", "cases"],
+  "properties": {
+    "schema_version": { "type": "string" },
+    "analysis_version": { "type": "string" },
+    "batch_id": { "type": "integer" },
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["review_id", "kategori", "sentimen", "severity"],
+        "properties": {
+          "review_id": { "type": "integer" },
+          "kategori": { "type": "string" },
+          "sentimen": { "type": "string", "enum": ["positif", "negatif", "netral"] },
+          "severity": { "type": "string", "enum": ["low", "medium", "high", "critical"] },
+          "issue": { "type": ["string", "null"] },
+          "modul": { "type": ["string", "null"] },
+          "fitur": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "cases": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["group_key", "member_review_ids", "judul", "ringkasan", "priority_score"],
+        "properties": {
+          "group_key": { "type": "string" },
+          "member_review_ids": { "type": "array", "items": { "type": "integer" } },
+          "judul": { "type": "string" },
+          "ringkasan": { "type": "string" },
+          "recommendation": { "type": ["string", "null"] },
+          "priority_score": { "type": "number", "minimum": 0, "maximum": 10 }
+        }
+      }
+    }
+  }
+}

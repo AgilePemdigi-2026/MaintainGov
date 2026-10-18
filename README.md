@@ -8,6 +8,7 @@ Pembagian tugas **Kelompok 5** ada di [Rencana Kerja](docs/MASTERPLAN.md). Rinci
 
 | Dokumen | Kegunaan |
 | --- | --- |
+| [Petunjuk Setup](docs/SETUP_GUIDE.md) | Cara install, konfigurasi, dan menjalankan semua komponen |
 | [Rencana Kerja](docs/MASTERPLAN.md) | Pembagian fitur, jadwal sprint, dan hal yang masih perlu dibahas |
 | [Arsitektur](docs/ARCHITECTURE.md) | Pembagian komponen, API, database, dan alur pemrosesan |
 | [Catatan Dataset](docs/DATASET_READINESS.md) | Struktur 7.149 ulasan Tangerang Live dan hasil pemeriksaan kamus |

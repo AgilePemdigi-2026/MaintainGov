@@ -1,0 +1,52 @@
+{
+  "schema_version": "1.0",
+  "analysis_version": "baseline-v0.1",
+  "batch_id": 101,
+  "results": [
+    {
+      "review_id": 501,
+      "kategori": "defect",
+      "sentimen": "negatif",
+      "severity": "high",
+      "issue": "Pengguna tidak dapat login setelah update",
+      "modul": "Autentikasi",
+      "fitur": "Login"
+    },
+    {
+      "review_id": 502,
+      "kategori": "request",
+      "sentimen": "positif",
+      "severity": "low",
+      "issue": null,
+      "modul": null,
+      "fitur": null
+    },
+    {
+      "review_id": 503,
+      "kategori": "performance",
+      "sentimen": "negatif",
+      "severity": "medium",
+      "issue": "Waktu loading terlalu lama dan sering timeout",
+      "modul": "Performance",
+      "fitur": "Loading"
+    }
+  ],
+  "cases": [
+    {
+      "group_key": "auth-login-fail",
+      "member_review_ids": [501],
+      "judul": "Kegagalan login setelah pembaruan aplikasi",
+      "ringkasan": "Pengguna melaporkan tidak dapat masuk ke aplikasi setelah ada pembaruan.",
+      "recommendation": "Periksa perubahan pada modul autentikasi di versi terbaru.",
+      "priority_score": 8.5
+    },
+    {
+      "group_key": "perf-loading-slow",
+      "member_review_ids": [503],
+      "judul": "Waktu loading aplikasi terlalu lama",
+      "ringkasan": "Loading lama dan timeout dilaporkan oleh pengguna.",
+      "recommendation": "Optimasi query database dan caching pada halaman utama.",
+      "priority_score": 6.0
+    }
+  ]
+}
