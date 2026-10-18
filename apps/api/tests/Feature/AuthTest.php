@@ -149,4 +149,12 @@ class AuthTest extends TestCase
         $response = $this->actingAs($this->timMaintenance)->getJson('/api/v1/tim-maintenance/dashboard');
         $response->assertStatus(200);
     }
+
+    public function test_csrf_protection_aktif(): void
+    {
+        $middleware = app(\Illuminate\Foundation\Http\Kernel::class)->getMiddleware();
+        $hasCsrf = in_array(\App\Http\Middleware\VerifyCsrfToken::class, $middleware);
+        
+        $this->assertTrue($hasCsrf, 'CSRF middleware harus aktif');
+    }
 }
