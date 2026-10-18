@@ -32,9 +32,7 @@ return new class extends Migration
                   ->onDelete('restrict');
         });
 
-        if (DB::getDriverName() === 'mysql') {
-            DB::statement('ALTER TABLE ulasan ADD CONSTRAINT ulasan_rating_range CHECK (rating BETWEEN 1 AND 5)');
-        }
+        DB::statement('ALTER TABLE ulasan ADD CONSTRAINT ulasan_rating_range CHECK (rating BETWEEN 1 AND 5)');
     }
 
     public function down(): void

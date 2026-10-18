@@ -51,7 +51,7 @@ Duplikasi satu baris per anggota per hari kerja, tanpa mengisi hasil yang belum 
 | --- | --- | --- | --- | --- | --- | --- |
 | Diisi | Gerard | W10-... / #... | Diisi | Diisi | Diisi atau tidak ada | URL/SHA |
 | Diisi | Demas | W10-... / #... | Diisi | Diisi | Diisi atau tidak ada | URL/SHA |
-| 2026-10-18 | Hanif | W10-02 | Setup web (Next.js), api (Laravel+MySQL), analysis (FastAPI), contracts, fixtures, dan test pass | Review setup bersama Demas, lanjut W10-08 | Tidak ada | docs/evidence/w10-02-setup.md |
+| Diisi | Hanif | W10-... / #... | Diisi | Diisi | Diisi atau tidak ada | URL/SHA |
 | Diisi | Valisha | W10-... / #... | Diisi | Diisi | Diisi atau tidak ada | URL/SHA |
 
 Rekap individu saat review: fitur yang dimiliki; artefak yang ditulis/diperbarui dan sumber sebelumnya; implementasi; pengujian; review terhadap anggota lain; jumlah commit beserta periodenya; kendala dan tindak lanjut. Jumlah commit tidak menggantikan bukti fungsi yang berjalan.
