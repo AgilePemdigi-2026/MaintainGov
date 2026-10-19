@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 160 160" role="img" aria-labelledby="title desc">
+  <title id="title">Logo MaintainGov</title>
+  <desc id="desc">Perisai biru dengan gelembung percakapan dan tanda centang hijau, melambangkan feedback dan pemeliharaan layanan.</desc>
+  <rect width="160" height="160" rx="40" fill="#102b43"/>
+  <path d="M80 24 124 42v34c0 28-18 47-44 60-26-13-44-32-44-60V42Z" fill="#173f58" stroke="#74e5c3" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M58 56h44a8 8 0 0 1 8 8v27a8 8 0 0 1-8 8H78l-16 13V99h-4a8 8 0 0 1-8-8V64a8 8 0 0 1 8-8Z" fill="#eefbf6"/>
+  <path d="m66 77 10 10 20-21" fill="none" stroke="#167e69" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
