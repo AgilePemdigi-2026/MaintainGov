@@ -23,6 +23,7 @@
     "rating_invariance": "passed; identical text with rating 1 or 5 gives identical response"
   },
   "frontend": {
+    "postcss": "8.5.31 override; npm audit reports 0 known vulnerabilities",
     "typecheck": "passed",
     "production_build": "passed; Next.js 15.5.28",
     "browser": "login, upload, persisted results, reload and source-review disclosure verified",

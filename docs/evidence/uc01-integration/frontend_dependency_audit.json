@@ -1,0 +1,13 @@
+{
+  "review_date": "2026-10-19",
+  "scope": "apps/web npm dependency tree only",
+  "previous_postcss": "8.4.31",
+  "resolved_postcss": "8.5.31",
+  "resolution": "package.json overrides and regenerated package-lock.json",
+  "github_alerts_observed_before_patch": {"high": 2, "moderate": 2},
+  "npm_audit_exit_code": 0,
+  "npm_audit_vulnerabilities": {
+    "info": 0, "low": 0, "moderate": 0, "high": 0, "critical": 0, "total": 0
+  },
+  "claim_limit": "No known vulnerabilities reported by this npm audit at review time; not a penetration test or proof of no vulnerabilities."
+}

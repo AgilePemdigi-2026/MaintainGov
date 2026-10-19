@@ -38,6 +38,7 @@ Gunakan database queue, timeout HTTP 120 detik, timeout worker 180 detik dan `re
 - [Ringkasan pemeriksaan](evidence/uc01-integration/validation.json): layanan analisis model asli, typecheck/build frontend, dan smoke HTTP.
 - [Pemulihan layanan nyata](evidence/uc01-integration/live_recovery.json): Gagal tanpa output parsial → layanan hidup → retry Selesai; 3 ulasan/2 case; retry batch sukses ditolak.
 - [Tampilan hasil](evidence/uc01-integration/browser-persisted-cases.png): browser login, unggah fixture tersamar, hasil Selesai, refresh mempertahankan case dan ulasan asal.
+- [Audit dependency frontend](evidence/uc01-integration/frontend_dependency_audit.json): empat alert PostCSS pada versi 8.4.31 ditangani dengan override 8.5.31 dan lockfile baru; npm audit tidak melaporkan kerentanan yang diketahui pada waktu pemeriksaan. Typecheck/build diulang setelah pembaruan.
 
 Tes Laravel memakai fake HTTP untuk variasi kegagalan kontrak. Smoke HTTP dan demo browser memakai layanan/model asli serta database persisten. Seluruhnya memakai fixture tersamar, bukan dataset mentah. Training notebook tidak diulang pada perubahan integrasi ini; metrik tetap berasal dari run Colab sebelumnya.
 
