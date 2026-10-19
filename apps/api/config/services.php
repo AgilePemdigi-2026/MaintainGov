@@ -1,6 +1,10 @@
 <?php
 
 return [
+    'analysis' => [
+        'url' => env('ANALYSIS_SERVICE_URL', 'http://127.0.0.1:8001'),
+        'timeout' => (int) env('ANALYSIS_TIMEOUT', 120),
+    ],
 
     /*
     |--------------------------------------------------------------------------

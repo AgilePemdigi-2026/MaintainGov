@@ -26,6 +26,7 @@ class AuthController extends Controller
             ], 401);
         }
 
+        Auth::guard()->setRememberDuration(60 * 24 * 30);
         Auth::login($pengguna, $request->boolean('remember', false));
         $request->session()->regenerate();
 

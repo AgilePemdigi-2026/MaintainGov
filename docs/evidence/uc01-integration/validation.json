@@ -1,0 +1,52 @@
+{
+  "review_date": "2026-10-19",
+  "scope": "Local UC01 integration with synthetic CSV fixture and real Colab model",
+  "base_main_sha": "c5876384fcc2c40e0708ae81e3ee6632d46c85f3",
+  "backend": {
+    "php": "8.4.26",
+    "database": "MariaDB 10.4.32 via mysql PDO; separate demo and test databases",
+    "tests": 31,
+    "passed": 31,
+    "skipped": 0,
+    "assertions": 89,
+    "http_in_feature_tests": "Laravel Http fake for service-response and failure variants"
+  },
+  "canonical_analysis_service": {
+    "path": "services/analysis",
+    "python": "3.13.16",
+    "scikit_learn": "1.6.1",
+    "tests_passed": 7,
+    "warnings": 1,
+    "warning": "Starlette TestClient httpx deprecation",
+    "model": "real trusted private Colab artifact",
+    "stub": false,
+    "rating_invariance": "passed; identical text with rating 1 or 5 gives identical response"
+  },
+  "frontend": {
+    "typecheck": "passed",
+    "production_build": "passed; Next.js 15.5.28",
+    "browser": "login, upload, persisted results, reload and source-review disclosure verified",
+    "invalid_csv_replacement": "required-column error visible; valid replacement enables analysis button"
+  },
+  "live_http": {
+    "csrf_missing": 419,
+    "anonymous_me": 401,
+    "wrong_credentials": 401,
+    "login_me_remember": "passed",
+    "invalid_csv": 422,
+    "upload": 202,
+    "queue_model_database": "passed; 3 reviews and 2 Pending cases",
+    "reload_and_idempotency": "passed",
+    "logout_and_old_cookie_replay": "passed; 401 after logout",
+    "developer_upload_and_batch_read": 403,
+    "real_service_down_retry": "see live_recovery.json"
+  },
+  "notebook_training_rerun": false,
+  "oracle_mysql_8_verified": false,
+  "full_dataset_application_load_test": false,
+  "concurrent_worker_or_hard_crash_test": false,
+  "human_gold_labels_available": false,
+  "domain_rules_approved": false,
+  "po_acceptance": false,
+  "raw_dataset_or_model_published": false
+}

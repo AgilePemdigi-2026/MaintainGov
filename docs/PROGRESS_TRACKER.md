@@ -4,6 +4,8 @@ Isi catatan ini setelah pengerjaan atau review, lalu gunakan untuk melengkapi te
 
 ## 1. Identitas periode
 
+Pembaruan 19 Oktober 2026: bantuan integrasi lintas komponen oleh Gerard melanjutkan source frontend, auth dan skema anggota lain; owner fitur tetap mengikuti Master Plan dan atribusi sebelumnya dipertahankan di Git. Alur browser dengan fixture 3 ulasan menghasilkan 2 case Pending dan bertahan setelah refresh. Uji mati layanan/retry nyata serta 31 tes backend pada MariaDB terpisah lulus. Lihat [bukti integrasi](UC01_INTEGRATION.md). Poin Done tetap menunggu review penerimaan; pengujian beban/full dataset dan label manusia belum ditutup.
+
 | Field | Isi |
 | --- | --- |
 | Kelompok / produk | 5 / MaintainGov |
@@ -13,7 +15,7 @@ Isi catatan ini setelah pengerjaan atau review, lalu gunakan untuk melengkapi te
 | Product Owner / pemberi penerimaan | Nama dan kewenangan perlu dikonfirmasi |
 | Goal | Login/RBAC, logout, CSV dianalisis hingga Maintenance Case Pending tersimpan dan terlihat |
 | Baseline Sprint 1 / proyek | 10 poin / 34 poin |
-| SHA/versi yang didemokan | Belum ada demo aplikasi |
+| SHA/versi yang didemokan | Integrasi lokal 19 Oktober 2026; [bukti integrasi](UC01_INTEGRATION.md); SHA publik dicatat pada PR integrasi |
 
 ## 2. Waktu tersedia tiap anggota
 
@@ -30,9 +32,9 @@ Perkiraan waktu belum mencakup rapat, review, dan bantuan antaranggota. Isi jam 
 
 | Fitur | Pemilik | Sprint | Poin | Status aktual | Issue / PR / SHA / bukti |
 | --- | --- | ---: | ---: | --- | --- |
-| Login dan Hak Akses | Demas | 1 | 4 | Belum diverifikasi | Belum diisi |
-| Logout | Demas | 1 | 1 | Belum diverifikasi | Belum diisi |
-| UC01 Menganalisis Feedback | Gerard | 1 | 5 | In Progress; belum Done | [Run Colab](../notebooks/runs/MaintainGov_UC01_run.ipynb), [evidence](evidence/uc01-colab-run/) dan [9 tes prototipe lokal](evidence/uc01_fastapi_local_validation.json); integrasi Laravel/MySQL dan penerimaan belum selesai |
+| Login dan Hak Akses | Demas | 1 | 4 | In Review; login, CSRF dan RBAC diuji lokal | [Bukti integrasi](UC01_INTEGRATION.md); implementasi auth tim dilanjutkan, penerimaan belum dicatat |
+| Logout | Demas | 1 | 1 | In Review; logout dan replay cookie lama ditolak | [Bukti integrasi](UC01_INTEGRATION.md); penerimaan belum dicatat |
+| UC01 Menganalisis Feedback | Gerard | 1 | 5 | In Progress; belum Done | [Run Colab](../notebooks/runs/MaintainGov_UC01_run.ipynb), [evidence](evidence/uc01-colab-run/) dan [bukti integrasi](UC01_INTEGRATION.md); alur aplikasi diuji pada fixture tersamar, kualitas NLP dan penerimaan belum ditutup |
 | UC02 Validasi Case | Demas | 2 | 3 | Belum diverifikasi | Belum diisi |
 | UC03 Edit Backlog | Valisha | 2 | 2 | Belum diverifikasi | Belum diisi |
 | UC04 Pengerjaan Issue | Hanif | 2 | 4 | Belum diverifikasi | Belum diisi |

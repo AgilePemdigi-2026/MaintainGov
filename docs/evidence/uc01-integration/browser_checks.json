@@ -1,0 +1,16 @@
+{
+  "review_date": "2026-10-19",
+  "frontend": "Next.js production build at local port 3000",
+  "maintenance_login_redirect": "passed",
+  "invalid_csv_error": "Kolom wajib: reviewId, Review Teks, rating, date; nama kolom tidak boleh ganda.",
+  "valid_replacement_enables_analysis": true,
+  "valid_csv_after_error": "Selesai; 3 reviews and 2 Pending cases",
+  "repeat_same_submission": "same batch and case IDs retained; results remain visible",
+  "reload": "persisted batch, case IDs and source reviews retained",
+  "case_source_disclosure": "source review visible when expanded",
+  "developer_login_redirect": "/maintenance-backlog",
+  "developer_backlog_status": "placeholder for Sprint 2; not claimed implemented",
+  "logout_then_login_again": "passed",
+  "data": "synthetic fixture only",
+  "production_deployment": false
+}

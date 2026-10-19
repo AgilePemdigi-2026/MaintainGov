@@ -41,15 +41,14 @@ def test_analyze_valid_request(client):
     assert data["schema_version"] == "1.0"
     assert len(data["results"]) == 2
 
-    # Review dengan rating rendah harus punya sentimen negatif
+    # Prediksi berasal dari teks; rating hanya metadata sumber.
     r1 = next(r for r in data["results"] if r["review_id"] == 101)
-    assert r1["sentimen"] == "negatif"
+    assert r1["sentimen"] == "negative"
 
-    # Review dengan rating tinggi harus punya sentimen positif
     r2 = next(r for r in data["results"] if r["review_id"] == 102)
-    assert r2["sentimen"] == "positif"
+    assert r2["sentimen"] == "positive"
 
-    # Harus ada minimal 1 case dari review negatif
+    # Aturan issue login membentuk kandidat case.
     assert len(data["cases"]) >= 1
 
 
@@ -61,9 +60,7 @@ def test_analyze_empty_reviews_rejected(client):
         "reviews": [],
     }
     response = client.post("/internal/v1/analyze", json=payload)
-    # Pydantic tidak memvalidasi min items secara default, tapi endpoint tetap
-    # harus mengembalikan response valid (bisa 200 dengan hasil kosong)
-    assert response.status_code in [200, 422]
+    assert response.status_code == 422
 
 
 def test_analyze_invalid_rating_rejected(client):
@@ -77,3 +74,26 @@ def test_analyze_invalid_rating_rejected(client):
     }
     response = client.post("/internal/v1/analyze", json=payload)
     assert response.status_code == 422
+
+
+def test_sentiment_is_from_text_not_input_rating(client):
+    def run(rating):
+        response = client.post("/internal/v1/analyze", json={"batch_id": 10, "reviews": [
+            {"review_id": 1, "text": "Tidak bisa login sejak pembaruan aplikasi", "rating": rating}]})
+        assert response.status_code == 200
+        return response.json()
+    low, high = run(1), run(5)
+    assert low == high
+    assert low["results"][0]["issue"] != "Placeholder issue"
+    assert low["rules_status"] == "draft_pending_team_review"
+    assert all(0 <= c["priority_score"] <= 10 for c in low["cases"])
+
+
+def test_duplicate_review_ids_rejected(client):
+    r = {"review_id": 1, "text": "tidak bisa login", "rating": 1}
+    assert client.post("/internal/v1/analyze", json={"batch_id": 1, "reviews": [r, r]}).status_code == 422
+
+
+def test_blank_text_rejected(client):
+    assert client.post("/internal/v1/analyze", json={"batch_id": 1, "reviews": [
+        {"review_id": 1, "text": "   ", "rating": 1}]}).status_code == 422

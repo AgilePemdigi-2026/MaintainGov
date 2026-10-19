@@ -1,0 +1,12 @@
+{
+  "service_down": "Gagal",
+  "partial_cases_after_failure": 0,
+  "partial_results_after_failure": 0,
+  "retry_after_real_service_restart": "Selesai",
+  "reviews_after_retry": 3,
+  "cases_after_retry": 2,
+  "attempt": 2,
+  "retry_successful_batch_http": 409,
+  "runtime_database": "MariaDB 10.4.32 via mysql PDO",
+  "canonical_model": "scikit-learn 1.6.1 real Colab artifact"
+}
