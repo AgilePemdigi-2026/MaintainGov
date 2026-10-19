@@ -6,7 +6,7 @@ export type BatchStatus = "Diproses" | "Selesai" | "Gagal";
 export type CaseStatus = "Pending" | "Valid" | "Tidak Valid";
 
 export interface AuthUser {
-  id: string;
+  user_id: number;
   nama: string;
   email: string;
   role: Role;

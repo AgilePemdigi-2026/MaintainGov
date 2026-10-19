@@ -1,5 +1,7 @@
 # Petunjuk Setup MaintainGov
 
+**Pembaruan integrasi 19 Oktober 2026:** gunakan [SETUP_UC01.md](SETUP_UC01.md) untuk menjalankan alur aplikasi dengan model asli, sesi cookie/CSRF, database queue dan hasil tersimpan. Panduan tersebut menggantikan langkah layanan analisis awal yang masih berupa scaffold di bawah ini.
+
 Dokumen ini menjelaskan cara menyiapkan dan menjalankan seluruh komponen MaintainGov di mesin lokal. Ikuti langkah-langkah di bawah sesuai urutan.
 
 ## Daftar Isi
@@ -27,7 +29,7 @@ Pastikan perangkat lunak berikut sudah terinstall:
 | **Composer** | 2.7+ | `composer --version` | [getcomposer.org](https://getcomposer.org/download/) |
 | **Node.js** | 20 LTS+ | `node --version` | [nodejs.org](https://nodejs.org/) |
 | **npm** | 10+ | `npm --version` | Otomatis terinstall bersama Node.js |
-| **Python** | 3.11+ | `python --version` | [python.org](https://www.python.org/downloads/) |
+| **Python** | 3.13 untuk model Colab | `python --version` | [python.org](https://www.python.org/downloads/) |
 | **pip** | 23+ | `pip --version` | Otomatis terinstall bersama Python |
 | **MySQL** | 8.0+ | `mysql --version` | [dev.mysql.com/downloads](https://dev.mysql.com/downloads/mysql/) atau via Laragon/XAMPP |
 | **Git** | 2.40+ | `git --version` | [git-scm.com](https://git-scm.com/) |

@@ -152,9 +152,10 @@ class AuthTest extends TestCase
 
     public function test_csrf_protection_aktif(): void
     {
-        $middleware = app(\Illuminate\Foundation\Http\Kernel::class)->getMiddleware();
-        $hasCsrf = in_array(\App\Http\Middleware\VerifyCsrfToken::class, $middleware);
-        
-        $this->assertTrue($hasCsrf, 'CSRF middleware harus aktif');
+        $this->app->instance('env', 'local');
+        $this->postJson('/api/v1/auth/login', [])->assertStatus(419);
+        $this->withSession(['_token' => 'csrf-test-token'])
+            ->withHeader('X-CSRF-TOKEN', 'csrf-test-token')
+            ->postJson('/api/v1/auth/login', [])->assertStatus(422);
     }
 }

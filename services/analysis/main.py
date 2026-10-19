@@ -1,26 +1,19 @@
-"""
-MaintainGov Analysis Service
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-Layanan analisis feedback pengguna menggunakan FastAPI.
-Menerima ulasan dari Laravel worker dan mengembalikan hasil analisis
-(kategori, sentimen, severity, issue, grouping, prioritas, rekomendasi).
-"""
-
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from app.routers import analyze
+from uc01.pipeline import load_resources
 
-app = FastAPI(
-    title="MaintainGov Analysis Service",
-    description="Internal analysis service – called by Laravel worker, not by browser.",
-    version="0.1.0",
-    docs_url="/internal/docs",
-    openapi_url="/internal/openapi.json",
-)
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    load_resources()
+    yield
 
+app = FastAPI(title="MaintainGov Analysis Service", version="0.2.0", lifespan=lifespan,
+              docs_url="/internal/docs", openapi_url="/internal/openapi.json")
 app.include_router(analyze.router)
 
-
 @app.get("/internal/health")
-async def health_check():
-    """Endpoint sederhana untuk memastikan service berjalan."""
-    return {"status": "ok", "service": "analysis"}
+def health_check():
+    _, _, rules, signature = load_resources()
+    return {"status": "ok", "service": "analysis", "model": "loaded",
+            "rules_status": rules["status"], "rule_sha12": signature}

@@ -1,6 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { apiFetch } from "@/lib/api";
+import type { AuthUser } from "@/lib/types";
 import type { FormEvent } from "react";
 import {
   CheckIcon,
@@ -11,22 +14,33 @@ import {
   ShieldCheckIcon,
 } from "@/components/icons";
 
-// Teks panel kiri mengikuti Figma apa adanya. Catatan: data mockup meminta label GitLab
-// diselaraskan dengan keputusan GitHub; ubah di sini bila sudah diputuskan.
 const FEATURES = [
   "Triase aduan warga menjadi tiket otomatis",
   "Backlog, issue, dan pull request dalam satu alur",
-  "Review kode terintegrasi GitLab & CI/CD",
+  "Review kode terintegrasi GitHub",
 ];
 
 export default function LoginPage() {
+  const router = useRouter();
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [remember, setRemember] = useState(true);
 
-  function handleSubmit(e: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    // TODO (W10-06): panggil POST /api/v1/auth/login lewat apiFetch setelah API (W10-05) siap,
-    // lalu arahkan sesuai role.
+    const form = new FormData(e.currentTarget);
+    setError("");
+    setBusy(true);
+    try {
+      const result = await apiFetch<{ data: AuthUser }>("/auth/login", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: form.get("email"), password: form.get("password"), remember }),
+      });
+      router.replace(result.data.role === "Tim Maintenance" ? "/analisis-feedback" : "/maintenance-backlog");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Tidak dapat menghubungi server.");
+    } finally { setBusy(false); }
   }
 
   return (
@@ -60,7 +74,7 @@ export default function LoginPage() {
           </ul>
         </div>
 
-        <div className="brand__foot">© 2024 Pemerintah Kota · MaintainGov v3.2.2</div>
+        <div className="brand__foot">MaintainGov · Sprint 1</div>
       </aside>
 
       <main className="panel">
@@ -129,14 +143,15 @@ export default function LoginPage() {
             Ingat perangkat ini selama 30 hari
           </label>
 
-          <button type="submit" className="btn btn--primary">
+          {error && <p role="alert" style={{ color: "#b42318" }}>{error}</p>}
+          <button type="submit" className="btn btn--primary" disabled={busy}>
             Masuk
           </button>
 
           <div className="divider">atau</div>
 
           {/* TODO: integrasi SSO Pemda belum ditetapkan; tombol hanya tampilan sesuai Figma. */}
-          <button type="button" className="btn btn--outline">
+          <button type="button" className="btn btn--outline" disabled title="SSO belum tersedia pada Sprint 1">
             <ShieldCheckIcon />
             Masuk dengan SSO Pemda
           </button>
