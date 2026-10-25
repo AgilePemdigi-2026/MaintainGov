@@ -2,33 +2,42 @@
   "schema_version": "1.0",
   "analysis_version": "baseline-v0.1",
   "batch_id": 101,
+  "rules_status": "draft_pending_team_review",
+  "sentiment_target_mode": "rating_proxy",
+  "warnings": [
+    "Prediksi sentimen menggunakan proksi rating; bukan gold sentiment manusia.",
+    "Aturan category, severity, issue grouping, dan priority masih draf dan memerlukan validasi."
+  ],
   "results": [
     {
       "review_id": 501,
       "kategori": "defect",
-      "sentimen": "negatif",
+      "sentimen": "negative",
       "severity": "high",
       "issue": "Pengguna tidak dapat login setelah update",
       "modul": "Autentikasi",
-      "fitur": "Login"
+      "fitur": "Login",
+      "needs_manual_review": false
     },
     {
       "review_id": 502,
       "kategori": "request",
-      "sentimen": "positif",
-      "severity": "low",
+      "sentimen": "positive",
+      "severity": null,
       "issue": null,
       "modul": null,
-      "fitur": null
+      "fitur": null,
+      "needs_manual_review": true
     },
     {
       "review_id": 503,
       "kategori": "performance",
-      "sentimen": "negatif",
+      "sentimen": "negative",
       "severity": "medium",
       "issue": "Waktu loading terlalu lama dan sering timeout",
       "modul": "Performance",
-      "fitur": "Loading"
+      "fitur": "Loading",
+      "needs_manual_review": false
     }
   ],
   "cases": [
@@ -37,6 +46,10 @@
       "member_review_ids": [501],
       "judul": "Kegagalan login setelah pembaruan aplikasi",
       "ringkasan": "Pengguna melaporkan tidak dapat masuk ke aplikasi setelah ada pembaruan.",
+      "category": "defect",
+      "severity": "high",
+      "module": "Autentikasi",
+      "feature": "Login",
       "recommendation": "Periksa perubahan pada modul autentikasi di versi terbaru.",
       "priority_score": 8.5
     },
@@ -45,6 +58,10 @@
       "member_review_ids": [503],
       "judul": "Waktu loading aplikasi terlalu lama",
       "ringkasan": "Loading lama dan timeout dilaporkan oleh pengguna.",
+      "category": "performance",
+      "severity": "medium",
+      "module": "Performance",
+      "feature": "Loading",
       "recommendation": "Optimasi query database dan caching pada halaman utama.",
       "priority_score": 6.0
     }

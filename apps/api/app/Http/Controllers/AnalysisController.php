@@ -46,7 +46,7 @@ class AnalysisController extends Controller
                 foreach (array_chunk($rows, 100) as $chunk) {
                     DB::table('ulasan')->insert(array_map(fn ($row) => ['batch_id' => $id] + $row, $chunk));
                 }
-                AnalyzeFeedback::dispatch($id);
+                AnalyzeFeedback::dispatch($id, 1);
                 return $id;
             });
         } catch (QueryException $e) {
@@ -90,11 +90,12 @@ class AnalysisController extends Controller
             $batch = DB::table('analysis_batch')->where('batch_id', $id)->lockForUpdate()->first();
             abort_unless($batch->status_analisis === 'Gagal', 409, 'Hanya batch gagal yang dapat diulang.');
             abort_if($batch->attempt >= 10, 409, 'Batas pengulangan tercapai.');
+            $newAttempt = $batch->attempt + 1;
             DB::table('analysis_batch')->where('batch_id', $id)->update([
                 'status_analisis' => 'Diproses', 'started_at' => null, 'completed_at' => null,
-                'error_message' => null, 'attempt' => $batch->attempt + 1,
+                'error_message' => null, 'attempt' => $newAttempt,
             ]);
-            AnalyzeFeedback::dispatch($id);
+            AnalyzeFeedback::dispatch($id, $newAttempt);
         });
         return response()->json(['data' => $this->snapshot(DB::table('analysis_batch')->where('batch_id', $id)->first())], 202);
     }

@@ -3,24 +3,28 @@
   "title": "AnalyzeResponse",
   "description": "Kontrak internal respons FastAPI → Laravel",
   "type": "object",
-  "required": ["schema_version", "analysis_version", "batch_id", "results", "cases"],
+  "required": ["schema_version", "analysis_version", "batch_id", "results", "cases", "rules_status", "sentiment_target_mode", "warnings"],
   "properties": {
-    "schema_version": { "type": "string" },
+    "schema_version": { "type": "string", "const": "1.0" },
     "analysis_version": { "type": "string" },
     "batch_id": { "type": "integer" },
+    "rules_status": { "type": "string" },
+    "sentiment_target_mode": { "type": "string", "enum": ["rating_proxy"] },
+    "warnings": { "type": "array", "items": { "type": "string" } },
     "results": {
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["review_id", "kategori", "sentimen", "severity"],
+        "required": ["review_id", "kategori", "sentimen"],
         "properties": {
           "review_id": { "type": "integer" },
           "kategori": { "type": "string" },
-          "sentimen": { "type": "string", "enum": ["positif", "negatif", "netral"] },
-          "severity": { "type": "string", "enum": ["low", "medium", "high", "critical"] },
+          "sentimen": { "type": "string", "enum": ["positive", "negative", "neutral"] },
+          "severity": { "type": ["string", "null"], "enum": ["low", "medium", "high", null] },
           "issue": { "type": ["string", "null"] },
           "modul": { "type": ["string", "null"] },
-          "fitur": { "type": ["string", "null"] }
+          "fitur": { "type": ["string", "null"] },
+          "needs_manual_review": { "type": "boolean" }
         }
       }
     },
@@ -28,12 +32,16 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["group_key", "member_review_ids", "judul", "ringkasan", "priority_score"],
+        "required": ["group_key", "member_review_ids", "judul", "ringkasan", "category", "severity", "priority_score"],
         "properties": {
           "group_key": { "type": "string" },
           "member_review_ids": { "type": "array", "items": { "type": "integer" } },
           "judul": { "type": "string" },
           "ringkasan": { "type": "string" },
+          "category": { "type": "string" },
+          "severity": { "type": "string", "enum": ["low", "medium", "high"] },
+          "module": { "type": ["string", "null"] },
+          "feature": { "type": ["string", "null"] },
           "recommendation": { "type": ["string", "null"] },
           "priority_score": { "type": "number", "minimum": 0, "maximum": 10 }
         }
