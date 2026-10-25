@@ -33,7 +33,7 @@ jobs:
 
       - name: Run Laravel tests
         working-directory: apps/api
-        run: php artisan test --no-interaction
+        run: php artisan test
         env:
           DB_CONNECTION: sqlite
           DB_DATABASE: ':memory:'
@@ -55,6 +55,10 @@ jobs:
         run: |
           python -m venv .venv
           .venv/bin/pip install -r requirements.txt
+
+      - name: Generate CI model artifacts
+        working-directory: services/analysis
+        run: .venv/bin/python scripts/generate_ci_artifacts.py
 
       - name: Run FastAPI tests
         working-directory: services/analysis
