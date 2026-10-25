@@ -13,7 +13,17 @@ class AnalysisController extends Controller
 {
     public function store(Request $request, FeedbackCsv $csv): JsonResponse
     {
-        $request->validate(['file' => 'required|file|max:8192']);
+        $request->validate([
+            'file' => [
+                'required',
+                'file',
+                function (string $attribute, mixed $value, \Closure $fail) {
+                    if ($value && $value->getSize() > 10_000_000) {
+                        $fail('Ukuran file melebihi batas 10.000.000 byte.');
+                    }
+                },
+            ],
+        ]);
         $file = $request->file('file');
         abort_unless(strtolower($file->getClientOriginalExtension()) === 'csv', 422, 'File harus berekstensi CSV.');
         $rows = $csv->parse($file->getRealPath());
