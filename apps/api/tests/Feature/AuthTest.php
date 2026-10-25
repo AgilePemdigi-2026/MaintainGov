@@ -158,4 +158,42 @@ class AuthTest extends TestCase
             ->withHeader('X-CSRF-TOKEN', 'csrf-test-token')
             ->postJson('/api/v1/auth/login', [])->assertStatus(422);
     }
+
+    public function test_remember_token_dirotasi_saat_logout(): void
+    {
+        $response = $this->postJson('/api/v1/auth/login', [
+            'email' => 'tim@maintaingov.test',
+            'password' => 'password123',
+            'remember' => true,
+        ]);
+        $response->assertStatus(200);
+
+        $tokenSebelum = $this->timMaintenance->fresh()->remember_token;
+        $this->assertNotNull($tokenSebelum, 'Token remember harus ter-set saat login dengan remember=true');
+
+        $this->postJson('/api/v1/auth/logout')->assertStatus(200);
+
+        $tokenSesudah = $this->timMaintenance->fresh()->remember_token;
+        $this->assertNotEquals($tokenSebelum, $tokenSesudah, 'Token remember harus berubah setelah logout');
+    }
+
+    public function test_sesi_lama_tidak_berlaku_setelah_logout(): void
+    {
+        $loginResponse = $this->postJson('/api/v1/auth/login', [
+            'email' => 'tim@maintaingov.test',
+            'password' => 'password123',
+        ]);
+        $loginResponse->assertStatus(200);
+
+        $sessionCookie = collect($loginResponse->headers->getCookies())
+            ->first(fn ($cookie) => str_contains($cookie->getName(), 'session'));
+
+        $this->assertNotNull($sessionCookie, 'Cookie sesi harus ada setelah login');
+
+        $this->postJson('/api/v1/auth/logout');
+
+        $this->withCookies([
+            $sessionCookie->getName() => $sessionCookie->getValue(),
+        ])->getJson('/api/v1/auth/me')->assertStatus(401);
+    }
 }

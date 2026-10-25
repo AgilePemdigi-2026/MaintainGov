@@ -164,4 +164,79 @@ class AnalysisFlowTest extends TestCase
         $this->assertDatabaseCount('maintenance_case', 0);
         $this->assertNull(DB::table('ulasan')->first()->analysis_result);
     }
+
+    public function test_file_tepat_10_mb_diterima(): void
+    {
+        config(['queue.default' => 'sync']);
+        Http::fake(['*' => Http::response($this->response(1, 1))]);
+
+        $header = "reviewId,Review Teks,rating,date\n";
+        $maxRows = 10_000;
+        $target = 10_000_000;
+        
+        $textLength = 970;
+        
+        $rows = [];
+        for ($i = 1; $i <= $maxRows; $i++) {
+            $rows[] = "r-{$i}," . str_repeat('a', $textLength) . ",3,2026-10-19 08:00:00\n";
+        }
+        
+        $content = $header . implode('', $rows);
+        
+        $this->assertLessThanOrEqual($target, strlen($content), 'File harus <= 10 MB');
+        $this->assertSame($maxRows, count($rows), 'Jumlah baris harus tepat 10.000');
+
+        $file = UploadedFile::fake()->createWithContent('big.csv', $content);
+        $this->actingAs($this->user())
+            ->post('/api/v1/analysis-batches', ['file' => $file], ['Accept' => 'application/json'])
+            ->assertStatus(202);
+    }
+
+    public function test_file_lebih_dari_10_mb_ditolak(): void
+    {
+        $content = str_repeat('x', 10_000_001);
+        $file = UploadedFile::fake()->createWithContent('toobig.csv', $content);
+
+        $this->actingAs($this->user())
+            ->post('/api/v1/analysis-batches', ['file' => $file], ['Accept' => 'application/json'])
+            ->assertStatus(422)
+            ->assertJsonPath('errors.file.0', 'Ukuran file melebihi batas 10.000.000 byte.');
+    }
+
+    public function test_csv_lebih_dari_10000_baris_ditolak(): void
+    {
+        $rows = ["reviewId,Review Teks,rating,date"];
+        for ($i = 1; $i <= 10001; $i++) {
+            $rows[] = "r-$i,teks ulasan $i,3,2026-10-19 08:00:00";
+        }
+        $file = UploadedFile::fake()->createWithContent('many.csv', implode("\n", $rows));
+
+        $this->actingAs($this->user())
+            ->post('/api/v1/analysis-batches', ['file' => $file], ['Accept' => 'application/json'])
+            ->assertStatus(422);
+
+        $this->assertDatabaseCount('analysis_batch', 0);
+    }
+
+    public function test_csv_tepat_10000_baris_diterima(): void
+    {
+        config(['queue.default' => 'sync']);
+        Http::fake(['*' => Http::response([
+            'schema_version' => '1.0',
+            'analysis_version' => 'test',
+            'batch_id' => 1,
+            'results' => [],
+            'cases' => [],
+        ])]);
+
+        $rows = ["reviewId,Review Teks,rating,date"];
+        for ($i = 1; $i <= 10000; $i++) {
+            $rows[] = "r-$i,teks ulasan $i,3,2026-10-19 08:00:00";
+        }
+        $file = UploadedFile::fake()->createWithContent('ok10k.csv', implode("\n", $rows));
+
+        $this->actingAs($this->user())
+            ->post('/api/v1/analysis-batches', ['file' => $file], ['Accept' => 'application/json'])
+            ->assertStatus(202);
+    }
 }
