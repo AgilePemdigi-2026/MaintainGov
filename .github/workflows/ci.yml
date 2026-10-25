@@ -1,0 +1,99 @@
+name: Sprint 1 CI
+
+on:
+  push:
+    branches: [main, 'feat/**']
+  pull_request:
+    branches: [main]
+
+jobs:
+  laravel-tests:
+    name: Laravel Tests (SQLite)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, sqlite3, pdo_sqlite
+          coverage: none
+
+      - name: Install Composer dependencies
+        working-directory: apps/api
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Prepare environment
+        working-directory: apps/api
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      - name: Run Laravel tests
+        working-directory: apps/api
+        run: php artisan test --no-interaction
+        env:
+          DB_CONNECTION: sqlite
+          DB_DATABASE: ':memory:'
+
+  fastapi-tests:
+    name: FastAPI / Pydantic Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install dependencies
+        working-directory: services/analysis
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install -r requirements.txt
+
+      - name: Run FastAPI tests
+        working-directory: services/analysis
+        run: .venv/bin/python -m pytest tests/ -v
+        env:
+          UC01_ARTIFACT_DIR: ${{ github.workspace }}/services/analysis/artifacts
+
+  contract-schema:
+    name: Contract Schema Validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate JSON Schema files are valid JSON
+        run: |
+          for f in contracts/*.schema.json contracts/examples/*.json; do
+            echo "Validating $f..."
+            python3 -c "import json; json.load(open('$f'))"
+          done
+
+      - name: Verify contract consistency (sentiment, severity, priority)
+        run: |
+          echo "=== Response Schema ==="
+          python3 -c "
+          import json
+          schema = json.load(open('contracts/analysis-response.schema.json'))
+          results_props = schema['properties']['results']['items']['properties']
+          cases_props = schema['properties']['cases']['items']['properties']
+
+          # Sentiment: must be English
+          assert results_props['sentimen']['enum'] == ['positive', 'negative', 'neutral'], 'Sentiment values wrong'
+
+          # Case severity: low/medium/high only
+          assert cases_props['severity']['enum'] == ['low', 'medium', 'high'], 'Case severity values wrong'
+
+          # Priority score: 0-10
+          assert cases_props['priority_score']['minimum'] == 0
+          assert cases_props['priority_score']['maximum'] == 10
+
+          print('Contract schema validation PASSED')
+          "
