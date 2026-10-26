@@ -176,12 +176,24 @@ jobs:
                           raise
                       time.sleep(1)
           PY
-      - run: python -m behave tests/bdd/api_sprint1.feature --tags="not @service_down" --format json --outfile tmp/bdd-http.json
-      - run: npm run test:e2e
+      # All phases use one localhost IP and Laravel's shared 10-login/minute quota.
+      # Reset the cache only in this disposable CI stack to isolate each phase.
+      - name: HTTP BDD with a fresh login quota
+        run: |
+          php apps/api/artisan cache:clear
+          python -m behave tests/bdd/api_sprint1.feature --tags="not @service_down" --format json --outfile tmp/bdd-http.json
+      - name: Browser scenarios with a fresh login quota
         working-directory: apps/web
-      - run: python scripts/benchmark_uc01.py --synthetic-rows 5000 --output tmp/capacity-5000.json
+        run: |
+          php ../api/artisan cache:clear
+          npm run test:e2e
+      - name: Synthetic capacity with a fresh login quota
+        run: |
+          php apps/api/artisan cache:clear
+          python scripts/benchmark_uc01.py --synthetic-rows 5000 --output tmp/capacity-5000.json
       - name: Analysis-service outage leaves no partial result
         run: |
+          php apps/api/artisan cache:clear
           kill "$(cat tmp/analysis.pid)"
           python -m behave tests/bdd/api_sprint1.feature --tags=@service_down --format json --outfile tmp/bdd-service-down.json
       - uses: actions/upload-artifact@v4

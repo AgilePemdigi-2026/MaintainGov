@@ -3,11 +3,19 @@ import { test, expect, type Page } from "@playwright/test";
 const password = process.env.MAINTAINGOV_DEMO_PASSWORD || "password123";
 const alerts = (page: Page) => page.locator('p[role="alert"]');
 
+async function submitLogin(page: Page, expectedStatus: number) {
+  const [response] = await Promise.all([
+    page.waitForResponse(response => response.request().method() === "POST" && new URL(response.url()).pathname.endsWith("/auth/login")),
+    page.getByRole("button", { name: "Masuk", exact: true }).click(),
+  ]);
+  expect(response.status(), `Login returned HTTP ${response.status()}; expected ${expectedStatus}. Check credentials, CSRF and the shared login rate limit.`).toBe(expectedStatus);
+}
+
 async function login(page: Page, role = "maintenance") {
   await page.goto("/login");
   await page.getByLabel("Email dinas", { exact: true }).fill(role + "@maintaingov.test");
   await page.getByLabel("Kata sandi", { exact: true }).fill(password);
-  await page.getByRole("button", { name: "Masuk", exact: true }).click();
+  await submitLogin(page, 200);
   await expect(page.getByRole("heading", { name: role === "maintenance" ? "Analisis Feedback" : "Maintenance Backlog", exact: true })).toBeVisible();
 }
 
@@ -33,7 +41,7 @@ test("login validates fields, rejects invalid credentials, supports both roles a
   expect(await page.getByLabel("Email dinas", { exact: true }).evaluate((el: HTMLInputElement) => el.validity.valueMissing)).toBe(true);
   await page.getByLabel("Email dinas", { exact: true }).fill("maintenance@maintaingov.test");
   await page.getByLabel("Kata sandi", { exact: true }).fill("wrong-password");
-  await page.getByRole("button", { name: "Masuk", exact: true }).click();
+  await submitLogin(page, 401);
   await expect(alerts(page)).toBeVisible();
   await login(page);
   await page.getByRole("button", { name: "Keluar", exact: true }).click();
