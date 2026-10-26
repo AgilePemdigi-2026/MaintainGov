@@ -1,13 +1,12 @@
+
 import type { Metadata } from "next";
-import localFont from "next/font/local";
+import { Plus_Jakarta_Sans } from "next/font/google";
 import type { ReactNode } from "react";
 import "./globals.css";
 
-const font = localFont({
-  src: "./fonts/plus-jakarta-sans-latin-wght-normal.woff2",
-  weight: "200 800",
-  style: "normal",
-  display: "swap",
+const font = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
   variable: "--font-sans",
 });
 
@@ -19,7 +18,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="id" className={font.variable}>
-      <body>{children}</body>
+      <body className={font.className}>{children}</body>
     </html>
   );
 }
