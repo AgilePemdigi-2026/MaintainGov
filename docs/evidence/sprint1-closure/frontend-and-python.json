@@ -1,0 +1,42 @@
+{
+  "date": "2026-10-26",
+  "frontend": {
+    "node": "24.22.1",
+    "next": "15.5.28",
+    "typecheck": "passed",
+    "production_build": "passed",
+    "browser_tests": 5,
+    "browser_passed": 5,
+    "browser_evidence": "browser-results.json"
+  },
+  "python": {
+    "version": "3.12.14",
+    "tests_with_private_model": 20,
+    "passed_with_private_model": 20,
+    "tests_with_synthetic_ci_model": 20,
+    "passed_with_synthetic_ci_model": 20,
+    "warning": "Starlette/httpx TestClient deprecation"
+  },
+  "diagrams": {
+    "puml_sources": 9,
+    "svg_files": 9,
+    "svg_xml_checked": 9
+  },
+  "ci": {
+    "jobs": 5,
+    "yaml_and_shell_syntax": "checked",
+    "remote_result": "not_run_for_this_patch; check after push",
+    "local_synthetic_model_http_bdd": 9,
+    "local_synthetic_model_benchmark_rows": 5000
+  },
+  "github_issues": {
+    "existing": [
+      12,
+      13,
+      14,
+      15,
+      16
+    ],
+    "newly_created": 0
+  }
+}

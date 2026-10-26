@@ -1,0 +1,39 @@
+' Reconstructed from current Sprint 1 source; review pending. 2026-10-24.
+@startuml
+skinparam monochrome true
+skinparam defaultFontName Serif
+actor Maintenance
+boundary "Next.js UI" as UI
+control "AnalysisController" as API
+control "AnalyzeFeedback worker" as Worker
+control "FastAPI pipeline" as NLP
+entity "MySQL" as DB
+Maintenance -> UI: pilih CSV dan Analisis
+UI -> API: upload + CSRF + request key
+API -> DB: simpan batch, ulasan, job (transaksi)
+API --> UI: 202 + batch ID
+Worker -> DB: lock batch, cocokkan attempt,\nset started_at
+Worker -> NLP: POST /internal/v1/analyze
+NLP --> Worker: results + candidate cases
+alt layanan / output gagal
+ Worker -> DB: attempt aktif menjadi Gagal
+else output valid
+ Worker -> DB: lock dan cocokkan attempt kembali
+ alt attempt sudah berubah
+  Worker -> Worker: abaikan hasil worker lama
+ else attempt masih aktif
+  Worker -> DB: simpan semua hasil, case Pending,\nrelasi sumber dan status Selesai (transaksi)
+ end
+end
+loop sampai Selesai atau Gagal
+ UI -> API: GET /batch/id/status
+ API -> DB: status dan count
+ API --> UI: snapshot ringan
+end
+UI -> API: GET /batch/id/cases dan /reviews (page)
+API -> DB: query milik pengunggah
+API --> UI: data halaman + meta
+Maintenance -> UI: buka sumber case / halaman berikutnya
+UI -> API: GET /reviews?case_id=...&page=...
+API --> UI: ulasan asal berpaginasi
+@enduml

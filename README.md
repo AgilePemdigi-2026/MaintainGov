@@ -154,3 +154,7 @@ Untuk berkontribusi: ambil satu tugas yang jelas, gunakan branch per tugas, buat
 ---
 
 <p align="center"><img src="docs/assets/maintaingov-logo.svg" alt="Logo MaintainGov" width="40" /><br /><sub>MaintainGov · Kelompok 5 · PPL Prak</sub></p>
+
+### Penutupan teknis Sprint 1 / Week 11
+
+Paket perubahan lokal, hasil uji, sumber diagram dan gate review tersedia pada [SPRINT1_CLOSURE.md](docs/SPRINT1_CLOSURE.md). Status tersebut tetap menunggu commit, review anggota dan acceptance; bukti kapasitas sintetis dibedakan dari evaluasi manusia serta full dataset asli.

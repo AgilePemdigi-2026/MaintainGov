@@ -1,0 +1,24 @@
+' Reconstructed from current Sprint 1 source; review pending. 2026-10-24.
+@startsalt
+{
+ MaintainGov - Analisis Feedback
+ Pengguna Maintenance | [ Keluar ]
+ CSV UTF-8: reviewId, Review Teks, rating, date
+ "Pilih file CSV " | [ Analisis feedback ]
+ Batas: 10 MB dan 10.000 ulasan
+ ---
+ Batch #... | Diproses / Selesai / Gagal
+ Status diperbarui otomatis; gangguan dapat dicoba ulang
+ [ Cek status sekarang ] | [ Coba ulang analisis ]
+ ---
+ Kandidat Maintenance Case Pending
+ Judul; kategori; modul; fitur; severity; prioritas /10
+ Ringkasan dan saran penanganan
+ [ Lihat ulasan pembentuk case ]
+ [ Sebelumnya ] | Halaman ... dari ... | [ Berikutnya ]
+ ---
+ Hasil per ulasan
+ ID asal; teks; sentimen; kategori; severity; issue; case
+ [ Sebelumnya ] | Halaman ... dari ... | [ Berikutnya ]
+}
+@endsalt

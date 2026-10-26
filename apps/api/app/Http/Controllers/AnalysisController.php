@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Jobs\AnalyzeFeedback;
 use App\Services\FeedbackCsv;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -15,6 +16,7 @@ class AnalysisController extends Controller
     {
         $request->validate([
             'file' => [
+                'bail',
                 'required',
                 'file',
                 function (string $attribute, mixed $value, \Closure $fail) {
@@ -29,11 +31,12 @@ class AnalysisController extends Controller
         $rows = $csv->parse($file->getRealPath());
         $hash = hash_file('sha256', $file->getRealPath());
         $key = $request->header('Idempotency-Key', $hash);
-        abort_if(!preg_match('/^[a-zA-Z0-9_-]{1,100}$/', $key), 422, 'Idempotency-Key tidak valid.');
+        abort_if(! preg_match('/^[a-zA-Z0-9_-]{1,100}$/', $key), 422, 'Idempotency-Key tidak valid.');
         $userId = $request->user()->user_id;
         $existing = DB::table('analysis_batch')->where('user_id', $userId)->where('request_key', $key)->first();
         if ($existing) {
             abort_if($existing->source_sha256 !== $hash, 409, 'Request key sudah dipakai untuk file berbeda.');
+
             return response()->json(['data' => $this->snapshot($existing)], 202);
         }
         try {
@@ -47,16 +50,19 @@ class AnalysisController extends Controller
                     DB::table('ulasan')->insert(array_map(fn ($row) => ['batch_id' => $id] + $row, $chunk));
                 }
                 AnalyzeFeedback::dispatch($id, 1);
+
                 return $id;
             });
         } catch (QueryException $e) {
             $existing = DB::table('analysis_batch')->where('user_id', $userId)->where('request_key', $key)->first();
-            if (!$existing) {
+            if (! $existing) {
                 throw $e;
             }
             abort_if($existing->source_sha256 !== $hash, 409, 'Request key sudah dipakai untuk file berbeda.');
+
             return response()->json(['data' => $this->snapshot($existing)], 202);
         }
+
         return response()->json(['data' => $this->snapshot(DB::table('analysis_batch')->where('batch_id', $id)->first())], 202);
     }
 
@@ -78,9 +84,63 @@ class AnalysisController extends Controller
     {
         $batch = $this->owned($request, $id);
         $reviews = DB::table('ulasan')->where('batch_id', $id)->orderBy('review_id')->get()
-            ->map(function ($r) { $r->analysis_result = json_decode($r->analysis_result ?? 'null', true); return $r; });
+            ->map(function ($r) {
+                $r->analysis_result = json_decode($r->analysis_result ?? 'null', true);
+
+                return $r;
+            });
         $cases = DB::table('maintenance_case')->where('batch_id', $id)->orderByDesc('priority_score')->get();
+
         return response()->json(['data' => $this->snapshot($batch) + ['reviews' => $reviews, 'cases' => $cases]]);
+    }
+
+    public function status(Request $request, int $id): JsonResponse
+    {
+        $batch = $this->owned($request, $id);
+
+        return response()->json(['data' => $this->snapshot($batch) + [
+            'case_count' => DB::table('maintenance_case')->where('batch_id', $id)->count(),
+        ]]);
+    }
+
+    public function reviews(Request $request, int $id): JsonResponse
+    {
+        $this->owned($request, $id);
+        $request->validate(['case_id' => 'sometimes|integer|min:1']);
+        $query = DB::table('ulasan')->where('batch_id', $id)->orderBy('review_id');
+        if ($request->has('case_id')) {
+            $caseId = $request->integer('case_id');
+            abort_unless(DB::table('maintenance_case')->where('batch_id', $id)->where('case_id', $caseId)->exists(), 404);
+            $query->where('case_id', $caseId);
+        }
+
+        return $this->page($query, $request, true);
+    }
+
+    public function cases(Request $request, int $id): JsonResponse
+    {
+        $this->owned($request, $id);
+
+        return $this->page(DB::table('maintenance_case')->where('batch_id', $id)
+            ->orderByDesc('priority_score')->orderBy('case_id'), $request);
+    }
+
+    private function page(Builder $query, Request $request, bool $decodeReviews = false): JsonResponse
+    {
+        $request->validate(['page' => 'sometimes|integer|min:1', 'per_page' => 'sometimes|integer|min:1|max:100']);
+        $page = $query->paginate($request->integer('per_page', 25));
+        if ($decodeReviews) {
+            $page->setCollection($page->getCollection()->map(function (object $review): object {
+                $review->analysis_result = json_decode($review->analysis_result ?? 'null', true);
+
+                return $review;
+            }));
+        }
+
+        return response()->json(['data' => $page->items(), 'meta' => [
+            'current_page' => $page->currentPage(), 'last_page' => $page->lastPage(),
+            'per_page' => $page->perPage(), 'total' => $page->total(),
+        ]]);
     }
 
     public function retry(Request $request, int $id): JsonResponse
@@ -97,6 +157,7 @@ class AnalysisController extends Controller
             ]);
             AnalyzeFeedback::dispatch($id, $newAttempt);
         });
+
         return response()->json(['data' => $this->snapshot(DB::table('analysis_batch')->where('batch_id', $id)->first())], 202);
     }
 }

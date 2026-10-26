@@ -8,9 +8,9 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-// Recover analysis batches stuck in "Diproses" every 5 minutes.
+// Recover analysis batches stuck in "Diproses" every minute.
 // The command itself is idempotent and safe to overlap.
 Schedule::command('analysis:recover-stale --timeout=300')
-    ->everyFiveMinutes()
+    ->everyMinute()
     ->withoutOverlapping()
     ->runInBackground();

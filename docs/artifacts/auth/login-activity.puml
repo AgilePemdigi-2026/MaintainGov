@@ -1,0 +1,25 @@
+' Reconstructed from current Sprint 1 source; review pending. 2026-10-24.
+@startuml
+skinparam monochrome true
+skinparam defaultFontName Serif
+start
+:Buka formulir login;
+:Isi email dan password;
+if (Field lengkap?) then (ya)
+ :Ambil token CSRF;
+ :POST /auth/login;
+ if (Credential valid?) then (ya)
+  :Regenerasi sesi dan baca role;
+  if (Tim Maintenance?) then (ya)
+   :Buka analisis feedback;
+  else (Developer)
+   :Buka placeholder maintenance backlog;
+  endif
+ else (tidak)
+  :Tampilkan pesan generik;
+ endif
+else (tidak)
+ :Tandai field wajib;
+endif
+stop
+@enduml

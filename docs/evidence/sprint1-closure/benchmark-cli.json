@@ -1,0 +1,12 @@
+{
+  "dataset_kind": "synthetic capacity fixture",
+  "original_dataset_identity_verified": false,
+  "rows": 5000,
+  "cases": 3,
+  "upload_seconds": 0.5294,
+  "observed_end_to_end_seconds_including_queue": 5.7785,
+  "all_paginated_results_accessible": true,
+  "raw_text_in_report": false,
+  "human_accuracy_evaluated": false,
+  "model_kind": "synthetic_ci_model; not the private model"
+}

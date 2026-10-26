@@ -20,12 +20,16 @@ class AnalyzeRequest(BaseModel):
         return self
 
 class ReviewResult(InferenceReview):
+    review_id: int = Field(gt=0)
+    severity: Literal["low", "medium", "high"] | None = None
     kategori: str
     sentimen: Literal["positive", "negative", "neutral"]
     modul: str | None = None
     fitur: str | None = None
 
 class CaseResult(InferenceCase):
+    member_review_ids: list[int] = Field(min_length=1)
+    severity: Literal["low", "medium", "high"]
     judul: str
     ringkasan: str
     priority_score: float = Field(ge=0, le=10)

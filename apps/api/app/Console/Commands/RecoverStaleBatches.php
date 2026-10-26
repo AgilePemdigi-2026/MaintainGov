@@ -27,13 +27,21 @@ class RecoverStaleBatches extends Command
 {
     protected $signature = 'analysis:recover-stale
         {--timeout=300 : Seconds after started_at before a batch is considered stale}
+        {--older-than= : Alias for --timeout}
         {--dry-run : Preview which batches would be recovered without changing them}';
 
     protected $description = 'Mark processing batches as failed when the worker has exceeded the timeout.';
 
     public function handle(): int
     {
-        $timeoutSeconds = (int) $this->option('timeout');
+        $timeoutSeconds = filter_var($this->option('older-than') ?? $this->option('timeout'), FILTER_VALIDATE_INT);
+        $minimum = max(300, (int) config('queue.connections.database.retry_after', 240) + 60,
+            (int) config('services.analysis.timeout', 120) + 60);
+        if ($timeoutSeconds === false || $timeoutSeconds < $minimum) {
+            $this->error('Timeout harus minimal '.$minimum.' detik, melebihi timeout dan lease worker.');
+
+            return self::FAILURE;
+        }
         $dryRun = (bool) $this->option('dry-run');
         $cutoff = now()->subSeconds($timeoutSeconds);
 
@@ -47,6 +55,7 @@ class RecoverStaleBatches extends Command
 
         if ($candidates->isEmpty()) {
             $this->info('No stale batches found.');
+
             return self::SUCCESS;
         }
 
@@ -66,7 +75,7 @@ class RecoverStaleBatches extends Command
             }
 
             // Atomic recovery with attempt guard.
-            $affected = DB::transaction(function () use ($candidate) {
+            $affected = DB::transaction(function () use ($candidate, $cutoff, $timeoutSeconds) {
                 $b = DB::table('analysis_batch')
                     ->where('batch_id', $candidate->batch_id)
                     ->lockForUpdate()
@@ -74,9 +83,12 @@ class RecoverStaleBatches extends Command
 
                 // Re-verify: skip if another worker completed or a newer attempt
                 // has been started since we read the candidate list.
-                if (!$b
+                if (! $b
                     || $b->status_analisis !== 'Diproses'
                     || (int) $b->attempt !== (int) $candidate->attempt
+                    || $b->started_at === null
+                    || $b->started_at !== $candidate->started_at
+                    || $b->started_at >= $cutoff->toDateTimeString()
                 ) {
                     return 0;
                 }
@@ -86,10 +98,10 @@ class RecoverStaleBatches extends Command
                     ->where('attempt', $candidate->attempt)
                     ->update([
                         'status_analisis' => 'Gagal',
-                        'completed_at'    => now(),
-                        'error_message'   => sprintf(
+                        'completed_at' => now(),
+                        'error_message' => sprintf(
                             'Analisis dihentikan: worker tidak menyelesaikan pemrosesan dalam %d detik (attempt %d).',
-                            (int) $this->option('timeout'),
+                            $timeoutSeconds,
                             $candidate->attempt,
                         ),
                     ]);

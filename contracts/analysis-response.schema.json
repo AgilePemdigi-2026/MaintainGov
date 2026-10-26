@@ -1,51 +1,332 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "AnalyzeResponse",
-  "description": "Kontrak internal respons FastAPI → Laravel",
-  "type": "object",
-  "required": ["schema_version", "analysis_version", "batch_id", "results", "cases", "rules_status", "sentiment_target_mode", "warnings"],
-  "properties": {
-    "schema_version": { "type": "string", "const": "1.0" },
-    "analysis_version": { "type": "string" },
-    "batch_id": { "type": "integer" },
-    "rules_status": { "type": "string" },
-    "sentiment_target_mode": { "type": "string", "enum": ["rating_proxy"] },
-    "warnings": { "type": "array", "items": { "type": "string" } },
-    "results": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "required": ["review_id", "kategori", "sentimen"],
-        "properties": {
-          "review_id": { "type": "integer" },
-          "kategori": { "type": "string" },
-          "sentimen": { "type": "string", "enum": ["positive", "negative", "neutral"] },
-          "severity": { "type": ["string", "null"], "enum": ["low", "medium", "high", null] },
-          "issue": { "type": ["string", "null"] },
-          "modul": { "type": ["string", "null"] },
-          "fitur": { "type": ["string", "null"] },
-          "needs_manual_review": { "type": "boolean" }
+  "$defs": {
+    "CaseResult": {
+      "properties": {
+        "group_key": {
+          "title": "Group Key",
+          "type": "string"
+        },
+        "member_review_ids": {
+          "items": {
+            "type": "integer"
+          },
+          "minItems": 1,
+          "title": "Member Review Ids",
+          "type": "array"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "summary": {
+          "title": "Summary",
+          "type": "string"
+        },
+        "category": {
+          "title": "Category",
+          "type": "string"
+        },
+        "severity": {
+          "enum": [
+            "low",
+            "medium",
+            "high"
+          ],
+          "title": "Severity",
+          "type": "string"
+        },
+        "module": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Module"
+        },
+        "feature": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Feature"
+        },
+        "frequency": {
+          "title": "Frequency",
+          "type": "integer"
+        },
+        "priority_score": {
+          "maximum": 10,
+          "minimum": 0,
+          "title": "Priority Score",
+          "type": "number"
+        },
+        "recommendation": {
+          "title": "Recommendation",
+          "type": "string"
+        },
+        "recommendation_status": {
+          "default": "suggestion_requires_validation",
+          "title": "Recommendation Status",
+          "type": "string"
+        },
+        "proposed_status": {
+          "default": "Pending",
+          "title": "Proposed Status",
+          "type": "string"
+        },
+        "persisted": {
+          "default": false,
+          "title": "Persisted",
+          "type": "boolean"
+        },
+        "judul": {
+          "title": "Judul",
+          "type": "string"
+        },
+        "ringkasan": {
+          "title": "Ringkasan",
+          "type": "string"
         }
-      }
+      },
+      "required": [
+        "group_key",
+        "member_review_ids",
+        "title",
+        "summary",
+        "category",
+        "severity",
+        "frequency",
+        "priority_score",
+        "recommendation",
+        "judul",
+        "ringkasan"
+      ],
+      "title": "CaseResult",
+      "type": "object"
+    },
+    "ReviewResult": {
+      "properties": {
+        "review_id": {
+          "exclusiveMinimum": 0,
+          "title": "Review Id",
+          "type": "integer"
+        },
+        "category": {
+          "title": "Category",
+          "type": "string"
+        },
+        "sentiment": {
+          "title": "Sentiment",
+          "type": "string"
+        },
+        "sentiment_target_mode": {
+          "const": "rating_proxy",
+          "default": "rating_proxy",
+          "title": "Sentiment Target Mode",
+          "type": "string"
+        },
+        "sentiment_lexicon": {
+          "default": null,
+          "title": "Sentiment Lexicon",
+          "type": "null"
+        },
+        "severity": {
+          "anyOf": [
+            {
+              "enum": [
+                "low",
+                "medium",
+                "high"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Severity"
+        },
+        "issue": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Issue"
+        },
+        "module": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Module"
+        },
+        "feature": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Feature"
+        },
+        "group_key": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Group Key"
+        },
+        "needs_manual_review": {
+          "title": "Needs Manual Review",
+          "type": "boolean"
+        },
+        "matched_rule_keys": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Matched Rule Keys",
+          "type": "array"
+        },
+        "disposition": {
+          "title": "Disposition",
+          "type": "string"
+        },
+        "kategori": {
+          "title": "Kategori",
+          "type": "string"
+        },
+        "sentimen": {
+          "enum": [
+            "positive",
+            "negative",
+            "neutral"
+          ],
+          "title": "Sentimen",
+          "type": "string"
+        },
+        "modul": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Modul"
+        },
+        "fitur": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Fitur"
+        }
+      },
+      "required": [
+        "review_id",
+        "category",
+        "sentiment",
+        "needs_manual_review",
+        "matched_rule_keys",
+        "disposition",
+        "kategori",
+        "sentimen"
+      ],
+      "title": "ReviewResult",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "schema_version": {
+      "const": "1.0",
+      "default": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "analysis_version": {
+      "title": "Analysis Version",
+      "type": "string"
+    },
+    "batch_id": {
+      "title": "Batch Id",
+      "type": "integer"
+    },
+    "rules_status": {
+      "title": "Rules Status",
+      "type": "string"
+    },
+    "sentiment_target_mode": {
+      "const": "rating_proxy",
+      "title": "Sentiment Target Mode",
+      "type": "string"
+    },
+    "warnings": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Warnings",
+      "type": "array"
+    },
+    "results": {
+      "items": {
+        "$ref": "#/$defs/ReviewResult"
+      },
+      "title": "Results",
+      "type": "array"
     },
     "cases": {
-      "type": "array",
       "items": {
-        "type": "object",
-        "required": ["group_key", "member_review_ids", "judul", "ringkasan", "category", "severity", "priority_score"],
-        "properties": {
-          "group_key": { "type": "string" },
-          "member_review_ids": { "type": "array", "items": { "type": "integer" } },
-          "judul": { "type": "string" },
-          "ringkasan": { "type": "string" },
-          "category": { "type": "string" },
-          "severity": { "type": "string", "enum": ["low", "medium", "high"] },
-          "module": { "type": ["string", "null"] },
-          "feature": { "type": ["string", "null"] },
-          "recommendation": { "type": ["string", "null"] },
-          "priority_score": { "type": "number", "minimum": 0, "maximum": 10 }
-        }
-      }
+        "$ref": "#/$defs/CaseResult"
+      },
+      "title": "Cases",
+      "type": "array"
     }
-  }
+  },
+  "required": [
+    "analysis_version",
+    "batch_id",
+    "rules_status",
+    "sentiment_target_mode",
+    "warnings",
+    "results",
+    "cases"
+  ],
+  "title": "AnalyzeResponse",
+  "type": "object",
+  "$schema": "https://json-schema.org/draft/2020-12/schema"
 }

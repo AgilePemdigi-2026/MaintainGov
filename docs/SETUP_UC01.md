@@ -4,10 +4,10 @@ Layanan utama adalah `services/analysis`; `experiments/uc01-api` merupakan snaps
 
 ## Runtime dan artefak
 
-- PHP >=8.3 (lokal diuji 8.4.26), Composer 2, Node >=20, Python **3.13**.
-- MySQL atau MariaDB. Bukti lokal memakai MariaDB 10.4.32 dengan driver mysql; Oracle MySQL 8 belum diuji pada perubahan ini.
+- PHP >=8.3, Composer 2, Node >=20, Python **3.12 atau 3.13**. Run penutupan memakai PHP 8.3.6, Node 24.22.1 dan Python 3.12.14.
+- MySQL 8.0+; run penutupan diuji pada Oracle MySQL 8.0.46. MariaDB tetap memiliki evidence historis terpisah.
 - Ekstensi PHP: pdo_mysql, mbstring, openssl, fileinfo, curl, zip dan XML/DOM. Untuk tes SQLite, aktifkan pdo_sqlite/sqlite3.
-- `upload_tmp_dir` pada php.ini harus menunjuk folder yang tersedia dan dapat ditulis. Atur `upload_max_filesize=8M`, `post_max_size=10M`; apit path berspasi dengan tanda kutip.
+- `upload_tmp_dir` pada php.ini harus menunjuk folder yang tersedia dan dapat ditulis. Atur `upload_max_filesize=10M`, `post_max_size=12M`; aplikasi membatasi file tepat 10.000.000 byte. Apit path berspasi dengan tanda kutip.
 - Artefak privat dari hasil Colab tepercaya: `sentiment_pipeline.joblib`, `slang_map.json`, `domain_rules.json`. Jangan commit artefak atau memuat joblib dari sumber yang tidak dipercaya.
 
 ## Laravel
@@ -55,7 +55,7 @@ Dari root repository:
 
 ```powershell
 cd services/analysis
-py -3.13 -m venv .venv
+py -3 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
 
@@ -110,3 +110,18 @@ Script memakai fixture tersamar dan akun seeder, lalu membuat batch demo. Atur `
 - File failed to upload: periksa folder sementara, batas upload, dan izin pada runtime PHP yang digunakan.
 
 Lihat [catatan integrasi dan bukti](UC01_INTEGRATION.md) untuk batas status penerimaan.
+
+
+## Pengujian browser Sprint 1
+
+Gunakan database demo terpisah yang sudah di-seed. Jalankan Laravel, queue database, FastAPI dan Next.js pada host 127.0.0.1 sesuai langkah di atas. Dari apps/web:
+
+```powershell
+npm ci
+npx playwright install chromium
+npm run test:e2e
+```
+
+Suite ini memeriksa login dua role/logout, validasi dan penggantian CSV, pagination >200 ulasan dan sumber case, refresh, sesi berakhir, pemulihan status otomatis/manual, serta mobile 375×812. File JSON hasil berada di apps/web/test-results; direktori ini tidak di-commit. CI mengunggahnya sebagai artifact. Jangan menjalankan suite terhadap database produksi.
+
+Workflow publik memakai model sintetis untuk pemeriksaan jalur integrasi; hasil tersebut tidak mengukur akurasi sentimen model privat. Model asli tetap diletakkan lokal sesuai aturan handoff artefak.

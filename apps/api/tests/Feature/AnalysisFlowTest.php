@@ -14,6 +14,21 @@ class AnalysisFlowTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_non_file_upload_is_validation_error_without_creating_batch(): void
+    {
+        $this->actingAs($this->user())->postJson('/api/v1/analysis-batches', ['file' => 'not-an-upload'])
+            ->assertUnprocessable()->assertJsonValidationErrors('file');
+        $this->assertDatabaseCount('analysis_batch', 0);
+    }
+
+    public function test_upload_above_decimal_ten_megabytes_is_rejected(): void
+    {
+        $file = $this->csv()->size(9766);
+        $this->actingAs($this->user())->post('/api/v1/analysis-batches', ['file' => $file], ['Accept' => 'application/json'])
+            ->assertUnprocessable()->assertJsonValidationErrors('file');
+        $this->assertDatabaseCount('analysis_batch', 0);
+    }
+
     private function user(string $role = 'Tim Maintenance'): Pengguna
     {
         return Pengguna::create(['nama' => 'Penguji', 'email' => uniqid().'@test.local',
@@ -143,6 +158,7 @@ class AnalysisFlowTest extends TestCase
         Http::fake(function ($r) {
             $data = $this->response($r['batch_id'], $r['reviews'][0]['review_id']);
             $data['cases'] = [];
+
             return Http::response($data);
         });
         $id = $this->actingAs($this->user())->post('/api/v1/analysis-batches', ['file' => $this->csv()], ['Accept' => 'application/json'])->json('data.batch_id');
@@ -157,6 +173,7 @@ class AnalysisFlowTest extends TestCase
         Http::fake(function ($r) {
             $data = $this->response($r['batch_id'], $r['reviews'][0]['review_id']);
             $data['cases'][0]['member_review_ids'] = [999999];
+
             return Http::response($data);
         });
         $this->actingAs($this->user())->post('/api/v1/analysis-batches', ['file' => $this->csv()], ['Accept' => 'application/json'])
@@ -173,16 +190,16 @@ class AnalysisFlowTest extends TestCase
         $header = "reviewId,Review Teks,rating,date\n";
         $maxRows = 10_000;
         $target = 10_000_000;
-        
+
         $textLength = 970;
-        
+
         $rows = [];
         for ($i = 1; $i <= $maxRows; $i++) {
-            $rows[] = "r-{$i}," . str_repeat('a', $textLength) . ",3,2026-10-19 08:00:00\n";
+            $rows[] = "r-{$i},".str_repeat('a', $textLength).",3,2026-10-19 08:00:00\n";
         }
-        
-        $content = $header . implode('', $rows);
-        
+
+        $content = $header.implode('', $rows);
+
         $this->assertLessThanOrEqual($target, strlen($content), 'File harus <= 10 MB');
         $this->assertSame($maxRows, count($rows), 'Jumlah baris harus tepat 10.000');
 
@@ -205,7 +222,7 @@ class AnalysisFlowTest extends TestCase
 
     public function test_csv_lebih_dari_10000_baris_ditolak(): void
     {
-        $rows = ["reviewId,Review Teks,rating,date"];
+        $rows = ['reviewId,Review Teks,rating,date'];
         for ($i = 1; $i <= 10001; $i++) {
             $rows[] = "r-$i,teks ulasan $i,3,2026-10-19 08:00:00";
         }
@@ -229,7 +246,7 @@ class AnalysisFlowTest extends TestCase
             'cases' => [],
         ])]);
 
-        $rows = ["reviewId,Review Teks,rating,date"];
+        $rows = ['reviewId,Review Teks,rating,date'];
         for ($i = 1; $i <= 10000; $i++) {
             $rows[] = "r-$i,teks ulasan $i,3,2026-10-19 08:00:00";
         }

@@ -2,102 +2,206 @@ name: Sprint 1 CI
 
 on:
   push:
-    branches: [main, 'feat/**']
+    branches: [main, 'fix/**', 'feat/**', 'feature/**']
   pull_request:
     branches: [main]
 
-jobs:
-  laravel-tests:
-    name: Laravel Tests (SQLite)
-    runs-on: ubuntu-latest
+permissions:
+  contents: read
 
+jobs:
+  backend:
+    name: Laravel / MySQL 8
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+          MYSQL_DATABASE: maintaingov_test
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    defaults:
+      run:
+        working-directory: apps/api
     steps:
       - uses: actions/checkout@v4
-
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
+      - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.3'
-          extensions: mbstring, sqlite3, pdo_sqlite
+          extensions: mbstring, pdo_mysql, pdo_sqlite, dom, xml, curl, zip
           coverage: none
+      - run: composer install --no-interaction --prefer-dist
+      - run: |
+          cp .env.example .env
+          php artisan key:generate
+      - run: php artisan test --compact
+        env:
+          DB_CONNECTION: mysql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_DATABASE: maintaingov_test
+          DB_USERNAME: root
+          DB_PASSWORD: ''
 
-      - name: Install Composer dependencies
+  contracts:
+    name: Runtime contracts and human-label evaluator
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r services/analysis/requirements-dev.txt
+      - run: python scripts/export_analysis_contracts.py --check
+      - run: python -m pytest -q tests/test_contracts.py tests/test_human_evaluation.py
+        working-directory: services/analysis
+
+  frontend:
+    name: Frontend typecheck and production build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run build
+
+  fastapi:
+    name: FastAPI with synthetic CI model
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r services/analysis/requirements-dev.txt
+      - name: Generate synthetic model (not model-quality evidence)
+        run: python services/analysis/scripts/generate_ci_artifacts.py
+      - run: python -m pytest -q services/analysis/tests
+        env:
+          UC01_ARTIFACT_DIR: ${{ github.workspace }}/services/analysis/artifacts
+
+  integration:
+    name: HTTP BDD, Chromium and synthetic capacity
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+          MYSQL_DATABASE: maintaingov_e2e
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    env:
+      DB_CONNECTION: mysql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_DATABASE: maintaingov_e2e
+      DB_USERNAME: root
+      DB_PASSWORD: ''
+      APP_ENV: local
+      APP_DEBUG: 'false'
+      APP_URL: http://127.0.0.1:8000
+      FRONTEND_URL: http://127.0.0.1:3000
+      ANALYSIS_SERVICE_URL: http://127.0.0.1:8001
+      UC01_ARTIFACT_DIR: ${{ github.workspace }}/services/analysis/artifacts
+      NEXT_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, pdo_mysql, dom, xml, curl, zip
+          coverage: none
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - run: pip install -r services/analysis/requirements-dev.txt
+      - run: python services/analysis/scripts/generate_ci_artifacts.py
+      - run: composer install --no-interaction --prefer-dist
         working-directory: apps/api
-        run: composer install --no-interaction --prefer-dist
-
-      - name: Prepare environment
+      - name: Prepare disposable database
         working-directory: apps/api
         run: |
           cp .env.example .env
           php artisan key:generate
-
-      - name: Run Laravel tests
-        working-directory: apps/api
-        run: php artisan test
-        env:
-          DB_CONNECTION: sqlite
-          DB_DATABASE: ':memory:'
-
-  fastapi-tests:
-    name: FastAPI / Pydantic Tests
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
+          php artisan migrate --force
+          php artisan db:seed --force
+      - run: npm ci
+        working-directory: apps/web
+      - run: npx playwright install --with-deps chromium
+        working-directory: apps/web
+      - run: npm run build
+        working-directory: apps/web
+      - name: Start stack
+        run: |
+          mkdir -p tmp
+          python -m uvicorn main:app --app-dir services/analysis --host 127.0.0.1 --port 8001 > tmp/analysis.log 2>&1 &
+          echo $! > tmp/analysis.pid
+          (cd apps/api && php -S 127.0.0.1:8000 -t public public/index.php) > tmp/api.log 2>&1 &
+          (cd apps/api && php artisan queue:work --sleep=1 --tries=1 --timeout=180) > tmp/worker.log 2>&1 &
+          (cd apps/web && npm run start -- --hostname 127.0.0.1) > tmp/web.log 2>&1 &
+          python - <<'PY'
+          import time, urllib.request
+          for url in ['http://127.0.0.1:8001/internal/health', 'http://127.0.0.1:8000/api/v1/auth/csrf', 'http://127.0.0.1:3000/login']:
+              for attempt in range(60):
+                  try:
+                      with urllib.request.urlopen(url, timeout=2) as response:
+                          assert response.status == 200
+                      break
+                  except Exception:
+                      if attempt == 59:
+                          raise
+                      time.sleep(1)
+          PY
+      # All phases use one localhost IP and Laravel's shared 10-login/minute quota.
+      # Reset the cache only in this disposable CI stack to isolate each phase.
+      - name: HTTP BDD with a fresh login quota
+        run: |
+          php apps/api/artisan cache:clear
+          python -m behave tests/bdd/api_sprint1.feature --tags="not @service_down" --format json --outfile tmp/bdd-http.json
+      - name: Browser scenarios with a fresh login quota
+        working-directory: apps/web
+        run: |
+          php ../api/artisan cache:clear
+          npm run test:e2e
+      - name: Synthetic capacity with a fresh login quota
+        run: |
+          php apps/api/artisan cache:clear
+          python scripts/benchmark_uc01.py --synthetic-rows 5000 --output tmp/capacity-5000.json
+      - name: Analysis-service outage leaves no partial result
+        run: |
+          php apps/api/artisan cache:clear
+          kill "$(cat tmp/analysis.pid)"
+          python -m behave tests/bdd/api_sprint1.feature --tags=@service_down --format json --outfile tmp/bdd-service-down.json
+      - uses: actions/upload-artifact@v4
+        if: always()
         with:
-          python-version: '3.13'
-
-      - name: Install dependencies
-        working-directory: services/analysis
-        run: |
-          python -m venv .venv
-          .venv/bin/pip install -r requirements.txt
-
-      - name: Generate CI model artifacts
-        working-directory: services/analysis
-        run: .venv/bin/python scripts/generate_ci_artifacts.py
-
-      - name: Run FastAPI tests
-        working-directory: services/analysis
-        run: .venv/bin/python -m pytest tests/ -v
-        env:
-          UC01_ARTIFACT_DIR: ${{ github.workspace }}/services/analysis/artifacts
-
-  contract-schema:
-    name: Contract Schema Validation
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Validate JSON Schema files are valid JSON
-        run: |
-          for f in contracts/*.schema.json contracts/examples/*.json; do
-            echo "Validating $f..."
-            python3 -c "import json; json.load(open('$f'))"
-          done
-
-      - name: Verify contract consistency (sentiment, severity, priority)
-        run: |
-          echo "=== Response Schema ==="
-          python3 -c "
-          import json
-          schema = json.load(open('contracts/analysis-response.schema.json'))
-          results_props = schema['properties']['results']['items']['properties']
-          cases_props = schema['properties']['cases']['items']['properties']
-
-          # Sentiment: must be English
-          assert results_props['sentimen']['enum'] == ['positive', 'negative', 'neutral'], 'Sentiment values wrong'
-
-          # Case severity: low/medium/high only
-          assert cases_props['severity']['enum'] == ['low', 'medium', 'high'], 'Case severity values wrong'
-
-          # Priority score: 0-10
-          assert cases_props['priority_score']['minimum'] == 0
-          assert cases_props['priority_score']['maximum'] == 10
-
-          print('Contract schema validation PASSED')
-          "
+          name: sprint1-integration-evidence
+          path: |
+            tmp/*.json
+            tmp/*.log
+            apps/web/test-results/
+          retention-days: 14

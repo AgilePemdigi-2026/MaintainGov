@@ -1,0 +1,66 @@
+' Reconstructed from current Sprint 1 source; review pending. 2026-10-24.
+@startuml
+skinparam monochrome true
+skinparam defaultFontName Serif
+hide methods
+class pengguna_sistem <<entity>> {
+ {field} user_id : bigint PK
+ {field} nama : varchar(100)
+ {field} email : varchar(100) unique
+ {field} password : hash
+ {field} role : Tim Maintenance | Developer
+ {field} remember_token : nullable
+}
+class analysis_batch <<entity>> {
+ {field} batch_id : bigint PK
+ {field} user_id : bigint FK
+ {field} request_key : varchar(100)
+ {field} source_sha256 : varchar(64)
+ {field} status_analisis : Diproses | Selesai | Gagal
+ {field} jumlah_data : unsigned integer
+ {field} attempt : unsigned tinyint
+ {field} started_at : nullable timestamp
+ {field} completed_at : nullable timestamp
+ {field} error_message : nullable text
+ {field} analysis_version : nullable varchar(50)
+}
+class ulasan <<entity>> {
+ {field} review_id : bigint PK
+ {field} batch_id : bigint FK
+ {field} source_review_id : varchar(100)
+ {field} teks_ulasan : text
+ {field} rating : integer 1..5
+ {field} tanggal_ulasan : nullable timestamp
+ {field} case_id : nullable bigint FK
+ {field} analysis_result : nullable JSON
+}
+class maintenance_case <<entity>> {
+ {field} case_id : bigint PK
+ {field} batch_id : nullable bigint FK
+ {field} group_key : varchar(100)
+ {field} judul_issue : varchar(200)
+ {field} kategori : varchar(50)
+ {field} modul : varchar(100)
+ {field} fitur : varchar(100)
+ {field} severity : low | medium | high
+ {field} priority_score : decimal /10
+ {field} recommendation : nullable text
+ {field} status_validasi : Pending | Valid | Tidak Valid
+ {field} user_id : nullable bigint FK (validator)
+}
+pengguna_sistem "1" -- "0..*" analysis_batch
+analysis_batch "1" -- "0..*" ulasan
+analysis_batch "0..1" -- "0..*" maintenance_case
+maintenance_case "0..1" -- "0..*" ulasan
+pengguna_sistem "0..1" -- "0..*" maintenance_case : validator
+note bottom of analysis_batch
+  Unique(user_id, request_key).
+  Job attempt memagari hasil worker lama.
+  Claim dan penyimpanan memakai transaksi.
+end note
+note bottom of maintenance_case
+  Unique(batch_id, group_key).
+  Pending tidak memiliki validator.
+  Validasi case merupakan Sprint 2.
+end note
+@enduml
