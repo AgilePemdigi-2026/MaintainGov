@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/api";
 import type { AuthUser } from "@/lib/types";
@@ -22,6 +22,7 @@ const FEATURES = [
 
 export default function LoginPage() {
   const router = useRouter();
+  const submitting = useRef(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -29,6 +30,8 @@ export default function LoginPage() {
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (submitting.current) return;
+    submitting.current = true;
     const form = new FormData(e.currentTarget);
     setError("");
     setBusy(true);
@@ -40,7 +43,7 @@ export default function LoginPage() {
       router.replace(result.data.role === "Tim Maintenance" ? "/analisis-feedback" : "/maintenance-backlog");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Tidak dapat menghubungi server.");
-    } finally { setBusy(false); }
+    } finally { submitting.current = false; setBusy(false); }
   }
 
   return (
@@ -78,7 +81,7 @@ export default function LoginPage() {
       </aside>
 
       <main className="panel">
-        <form className="form" onSubmit={handleSubmit} noValidate>
+        <form className="form" onSubmit={handleSubmit}>
           <h1 className="form__title">Masuk</h1>
           <p className="form__lead">Gunakan akun dinas Anda untuk melanjutkan.</p>
 
@@ -94,6 +97,7 @@ export default function LoginPage() {
                 <input
                   id="email"
                   name="email"
+                  required
                   type="email"
                   autoComplete="username"
                   placeholder="nama@pemkot.go.id"
@@ -115,6 +119,7 @@ export default function LoginPage() {
                 <input
                   id="password"
                   name="password"
+                  required
                   type={showPassword ? "text" : "password"}
                   autoComplete="current-password"
                   placeholder="••••••••"

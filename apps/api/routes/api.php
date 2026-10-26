@@ -1,7 +1,7 @@
 <?php
 
-use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AnalysisController;
+use App\Http\Controllers\AuthController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -10,6 +10,9 @@ Route::prefix('v1')->group(function () {
     Route::middleware(['auth', 'role:Tim Maintenance'])->group(function () {
         Route::post('/analysis-batches', [AnalysisController::class, 'store']);
         Route::get('/analysis-batches/{id}', [AnalysisController::class, 'show'])->whereNumber('id');
+        Route::get('/analysis-batches/{id}/status', [AnalysisController::class, 'status'])->whereNumber('id');
+        Route::get('/analysis-batches/{id}/reviews', [AnalysisController::class, 'reviews'])->whereNumber('id');
+        Route::get('/analysis-batches/{id}/cases', [AnalysisController::class, 'cases'])->whereNumber('id');
         Route::post('/analysis-batches/{id}/retry', [AnalysisController::class, 'retry'])->whereNumber('id');
     });
 

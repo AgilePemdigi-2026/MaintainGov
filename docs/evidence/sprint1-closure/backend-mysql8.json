@@ -1,0 +1,11 @@
+{
+  "tested_date": "2026-10-26",
+  "base_sha": "6383a700d3b0f5e0240dfa8f9323ef73631b555d",
+  "database": "Oracle MySQL 8.0.46",
+  "php": "8.3.6",
+  "tests": 84,
+  "passed": 84,
+  "skipped": 0,
+  "assertions": 233,
+  "remote_ci_run": false
+}

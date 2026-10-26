@@ -30,3 +30,7 @@ __pycache__/
 MaintainGov_artefak_privat*.zip
 MaintainGov_hasil_lengkap*.zip
 ~$*
+
+# Browser test output
+/apps/web/test-results/
+/apps/web/playwright-report/

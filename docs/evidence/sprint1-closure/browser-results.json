@@ -1,0 +1,80 @@
+{
+  "date_utc": "2026-10-26T05:09:09.332809+00:00",
+  "baseline_sha": "6383a700d3b0f5e0240dfa8f9323ef73631b555d",
+  "working_tree": "patch for user commit; not published",
+  "database": "Oracle MySQL 8.0.46",
+  "model_sha256": "3aa3bf587c44eec0e3991b549a020ebe050935528b7a527fa02a3e00f24d0872",
+  "human_acceptance": false,
+  "human_gold_labels": false,
+  "original_full_dataset_available": false,
+  "browser_tests": [
+    {
+      "scenario": "login validates fields",
+      "stats": {
+        "startTime": "2026-10-26T05:09:14.103Z",
+        "duration": 6742.476,
+        "expected": 1,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "exit_code": 0
+    },
+    {
+      "scenario": "CSV replacement",
+      "stats": {
+        "startTime": "2026-10-26T05:09:21.825Z",
+        "duration": 13098.267,
+        "expected": 1,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "exit_code": 0
+    },
+    {
+      "scenario": "transient status error",
+      "stats": {
+        "startTime": "2026-10-26T05:09:35.949Z",
+        "duration": 5131.6810000000005,
+        "expected": 1,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "exit_code": 0
+    },
+    {
+      "scenario": "manual status refresh",
+      "stats": {
+        "startTime": "2026-10-26T05:09:42.276Z",
+        "duration": 3589.1309999999994,
+        "expected": 1,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "exit_code": 0
+    },
+    {
+      "scenario": "mobile viewport",
+      "stats": {
+        "startTime": "2026-10-26T05:09:46.847Z",
+        "duration": 5477.317,
+        "expected": 1,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "exit_code": 0
+    }
+  ],
+  "complete": true,
+  "execution_mode": "five separate Playwright invocations; one browser process per scenario due local serverless Chromium context restriction",
+  "browser": "Chromium 153.0.8010.0 via @sparticuz/chromium 153.0.0; local testing only",
+  "playwright": "1.64.1",
+  "viewports": [
+    "1280x900",
+    "375x812"
+  ]
+}

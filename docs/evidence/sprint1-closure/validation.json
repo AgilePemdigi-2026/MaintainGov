@@ -1,0 +1,105 @@
+{
+  "date_utc": "2026-10-26T05:06:08.992673+00:00",
+  "baseline_sha": "6383a700d3b0f5e0240dfa8f9323ef73631b555d",
+  "working_tree": "patch prepared for user commit; not published",
+  "database": "Oracle MySQL 8.0.46",
+  "model_sha256": "3aa3bf587c44eec0e3991b549a020ebe050935528b7a527fa02a3e00f24d0872",
+  "human_acceptance": false,
+  "human_gold_labels": false,
+  "original_full_dataset_available": false,
+  "smoke": {
+    "anonymous_and_csrf": "passed",
+    "login_me_remember": "passed",
+    "invalid_csv": "passed",
+    "real_model_queue_persistence_reload_idempotency": {
+      "status": "passed",
+      "reviews": 3,
+      "cases": 2
+    },
+    "logout_and_old_cookie_replay": "passed",
+    "developer_rbac": "passed"
+  },
+  "bdd_http_summary": "USING RUNNER: behave.runner:Runner\n1 feature passed, 0 failed, 0 skipped\n8 scenarios passed, 0 failed, 1 skipped\n37 steps passed, 0 failed, 6 skipped\nTook 0min 23.900s",
+  "capacity": [
+    {
+      "rows": 5000,
+      "dataset": "synthetic capacity fixture; not original full dataset",
+      "upload_seconds": 0.45,
+      "end_to_end_seconds_including_queue": 8.671,
+      "persisted_results": 5000,
+      "cases": 1003,
+      "last_page_accessible": true
+    },
+    {
+      "rows": 5000,
+      "dataset": "synthetic capacity fixture; not original full dataset",
+      "upload_seconds": 0.471,
+      "end_to_end_seconds_including_queue": 7.758,
+      "persisted_results": 5000,
+      "cases": 1003,
+      "last_page_accessible": true
+    },
+    {
+      "rows": 5000,
+      "dataset": "synthetic capacity fixture; not original full dataset",
+      "upload_seconds": 0.519,
+      "end_to_end_seconds_including_queue": 7.773,
+      "persisted_results": 5000,
+      "cases": 1003,
+      "last_page_accessible": true
+    },
+    {
+      "rows": 7149,
+      "dataset": "synthetic capacity fixture; not original full dataset",
+      "upload_seconds": 0.74,
+      "end_to_end_seconds_including_queue": 13.389,
+      "persisted_results": 7149,
+      "cases": 1433,
+      "last_page_accessible": true
+    }
+  ],
+  "status_api": {
+    "requests": 50,
+    "p95_seconds": 0.2755
+  },
+  "actual_holdout_texts": {
+    "rows": 1632,
+    "end_to_end_seconds_including_queue": 4.676,
+    "source": "private holdout export; source texts/IDs/rating preserved, timestamps synthetic",
+    "full_original_dataset": false,
+    "cases": 42
+  },
+  "bdd_service_down_summary": "USING RUNNER: behave.runner:Runner\n1 feature passed, 0 failed, 0 skipped\n1 scenario passed, 0 failed, 8 skipped\n6 steps passed, 0 failed, 37 skipped\nTook 0min 1.293s",
+  "live_recovery": {
+    "real_service_down": true,
+    "no_partial_output": true,
+    "parallel_retry_statuses": [
+      202,
+      409
+    ],
+    "recovered_status": "Selesai",
+    "attempt": 2,
+    "reviews": 3,
+    "cases": 2
+  },
+  "hard_worker_crash": {
+    "worker_sigkill": true,
+    "stale_age_accelerated_in_test_database": true,
+    "recovery_command": "Found 1 candidate(s) (timeout=300s, cutoff=2026-10-26 05:02:41):\n batch_id=47 attempt=1 started_at=2026-10-26 05:01:41\nRecovered 1 batch(es).",
+    "no_partial_output": true,
+    "retry_recovered": true,
+    "old_queue_lease_expiry_accelerated": true,
+    "obsolete_job_did_not_change_attempt_2": true,
+    "cases": 2
+  },
+  "complete": true,
+  "current_source_sha256": {
+    "apps/api/app/Jobs/AnalyzeFeedback.php": "29824624e48b123cd5e5fc9e53df7e8f0832e8ab38e1d09f776e3446f407516c",
+    "apps/api/app/Http/Controllers/AnalysisController.php": "1208bb480f846aa27b100aadd570d88b4cf968b7cfc0f5da851ef88d0b35cfb4",
+    "apps/api/app/Console/Commands/RecoverStaleBatches.php": "58cf70b9e18a4a82195e5862cf172d1f8ea018c50a74a1639a1e0f1008aba2e3",
+    "apps/web/src/app/analisis-feedback/page.tsx": "1cdecfcef6ca85dee24d84d0b9441599b203083f1cf715a2378d540861e9ed91",
+    "apps/web/src/app/login/page.tsx": "9a544b7ad3b4f8663416e56a9616daeb1ed6bc03329495cc072d550dc3d91a2c",
+    "services/analysis/app/schemas.py": "44beeea80765f73ae20ad599f73e9b59fdf61ec281cece13b9a13a0cf0a77c00"
+  },
+  "test_code_state": "application logic tested; final changes after execution were comments/formatting and documentation only"
+}

@@ -1,5 +1,7 @@
 # Integrasi UC01 — Week 10
 
+**Pembaruan 26 Oktober 2026:** detail di bawah mempertahankan snapshot historis 19 Oktober. Penutupan teknis Week 11, kontrak terkini, batas 10 MB, pagination, recovery dan bukti MySQL 8 ada pada [SPRINT1_CLOSURE.md](SPRINT1_CLOSURE.md). Perubahan tersebut masih menunggu commit dan review pengguna.
+
 Alur yang diimplementasikan: Next.js → Laravel dengan sesi cookie/CSRF/RBAC → database queue → FastAPI dengan model Colab → penyimpanan hasil dan case Pending → tampilan hasil. Tombol login sekarang memanggil API; halaman analisis membaca hasil tersimpan, termasuk setelah refresh melalui URL `?batch=<id>`.
 
 ## Komponen dan kontrak

@@ -4,18 +4,13 @@
   "reviews": [
     {
       "review_id": 501,
-      "text": "Tidak dapat masuk setelah pembaruan",
+      "text": "Tidak bisa login setelah update",
       "rating": 1
     },
     {
       "review_id": 502,
-      "text": "Aplikasi sudah membaik, semoga terus ditingkatkan",
-      "rating": 4
-    },
-    {
-      "review_id": 503,
-      "text": "Loading lama sekali, sering timeout",
-      "rating": 2
+      "text": "Aplikasi bagus sekali",
+      "rating": 5
     }
   ]
 }

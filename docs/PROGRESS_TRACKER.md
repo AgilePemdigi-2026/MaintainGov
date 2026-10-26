@@ -2,6 +2,8 @@
 
 Isi catatan ini setelah pengerjaan atau review, lalu gunakan untuk melengkapi template monitoring resmi. Rencana kerja dan profil dataset sudah tersedia. Status implementasi di bawah masih perlu diperiksa melalui kode, pengujian, dan demo. Acuan jadwal ada di [Rencana Kerja](MASTERPLAN.md).
 
+**Snapshot penutupan teknis 26 Oktober 2026 (paket patch untuk commit pengguna):** 84 tes MySQL 8 dan 20 tes Python lulus; sembilan skenario BDD HTTP pada alur nyata lulus. Typecheck/build lulus. Pagination seluruh hasil, pemulihan polling, kontrak runtime, legacy job dan pengaman recovery disiapkan di atas main 6383a700. Uji kapasitas dan worker crash tercatat pada [evidence](evidence/sprint1-closure/validation.json). Lihat [handoff](SPRINT1_HANDOFF.md) untuk issue #12–16 dan review. Bukti browser dicatat terpisah. Label manusia, provenance full CSV asli, peer review dan penerimaan PO tetap terbuka. Poin Done belum ditambah.
+
 ## 1. Identitas periode
 
 Pembaruan 19 Oktober 2026: bantuan integrasi lintas komponen oleh Gerard melanjutkan source frontend, auth dan skema anggota lain; owner fitur tetap mengikuti Master Plan dan atribusi sebelumnya dipertahankan di Git. Alur browser dengan fixture 3 ulasan menghasilkan 2 case Pending dan bertahan setelah refresh. Uji mati layanan/retry nyata serta 31 tes backend pada MariaDB terpisah lulus. Lihat [bukti integrasi](UC01_INTEGRATION.md). Poin Done tetap menunggu review penerimaan; pengujian beban/full dataset dan label manusia belum ditutup.

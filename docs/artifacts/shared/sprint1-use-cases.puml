@@ -1,0 +1,23 @@
+' Reconstructed from current Sprint 1 source; review pending. 2026-10-24.
+@startuml
+skinparam monochrome true
+skinparam defaultFontName Serif
+left to right direction
+actor "Tim Maintenance" as M
+actor "Developer" as D
+rectangle "MaintainGov - Sprint 1" {
+ usecase "Login dan hak akses" as Login
+ usecase "Logout" as Logout
+ usecase "UC01\nMenganalisis Feedback" as Analysis
+}
+M --> Login
+D --> Login
+M --> Logout
+D --> Logout
+M --> Analysis
+note bottom of Analysis
+  Prasyarat: sesi Maintenance aktif.
+  Hasil: kandidat case Pending.
+  Validasi case/backlog berada di Sprint 2.
+end note
+@enduml

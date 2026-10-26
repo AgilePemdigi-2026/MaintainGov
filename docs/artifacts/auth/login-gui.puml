@@ -1,0 +1,11 @@
+' Reconstructed from current Sprint 1 source; review pending. 2026-10-24.
+@startsalt
+{
+  MaintainGov - Login
+  Email | "maintenance@maintaingov.test "
+  Password | "******** "
+  [X] Ingat saya
+  [ Masuk ]
+  Pesan gagal generik / field wajib / status proses
+}
+@endsalt

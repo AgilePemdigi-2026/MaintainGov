@@ -1,69 +1,77 @@
 {
   "schema_version": "1.0",
-  "analysis_version": "baseline-v0.1",
+  "analysis_version": "colab-1.1-c3044352e900",
   "batch_id": 101,
   "rules_status": "draft_pending_team_review",
   "sentiment_target_mode": "rating_proxy",
   "warnings": [
     "Prediksi sentimen menggunakan proksi rating; bukan gold sentiment manusia.",
-    "Aturan category, severity, issue grouping, dan priority masih draf dan memerlukan validasi."
+    "Aturan category, severity, issue grouping, dan priority masih draf dan memerlukan validasi.",
+    "sentiment_lexicon=null karena lexicon lengkap tidak termasuk artefak privat yang diekspor.",
+    "Maintenance Case belum dipersistenkan; backend Laravel harus menyimpan hasilnya."
   ],
   "results": [
     {
       "review_id": 501,
+      "category": "defect",
+      "sentiment": "negative",
+      "sentiment_target_mode": "rating_proxy",
+      "sentiment_lexicon": null,
+      "severity": "high",
+      "issue": "Pengguna tidak dapat login",
+      "module": "autentikasi",
+      "feature": "login",
+      "group_key": "login_failure:cluster_0000",
+      "needs_manual_review": false,
+      "matched_rule_keys": [
+        "login_failure"
+      ],
+      "disposition": "candidate_issue",
       "kategori": "defect",
       "sentimen": "negative",
-      "severity": "high",
-      "issue": "Pengguna tidak dapat login setelah update",
-      "modul": "Autentikasi",
-      "fitur": "Login",
-      "needs_manual_review": false
+      "modul": "autentikasi",
+      "fitur": "login"
     },
     {
       "review_id": 502,
-      "kategori": "request",
-      "sentimen": "positive",
+      "category": "other",
+      "sentiment": "positive",
+      "sentiment_target_mode": "rating_proxy",
+      "sentiment_lexicon": null,
       "severity": null,
       "issue": null,
+      "module": null,
+      "feature": null,
+      "group_key": null,
+      "needs_manual_review": true,
+      "matched_rule_keys": [],
+      "disposition": "needs_manual_review",
+      "kategori": "other",
+      "sentimen": "positive",
       "modul": null,
-      "fitur": null,
-      "needs_manual_review": true
-    },
-    {
-      "review_id": 503,
-      "kategori": "performance",
-      "sentimen": "negative",
-      "severity": "medium",
-      "issue": "Waktu loading terlalu lama dan sering timeout",
-      "modul": "Performance",
-      "fitur": "Loading",
-      "needs_manual_review": false
+      "fitur": null
     }
   ],
   "cases": [
     {
-      "group_key": "auth-login-fail",
-      "member_review_ids": [501],
-      "judul": "Kegagalan login setelah pembaruan aplikasi",
-      "ringkasan": "Pengguna melaporkan tidak dapat masuk ke aplikasi setelah ada pembaruan.",
+      "group_key": "login_failure:cluster_0000",
+      "member_review_ids": [
+        501
+      ],
+      "title": "Pengguna tidak dapat login",
+      "summary": "1 ulasan cocok dengan aturan login_failure; perlu review konteks.",
       "category": "defect",
       "severity": "high",
-      "module": "Autentikasi",
-      "feature": "Login",
-      "recommendation": "Periksa perubahan pada modul autentikasi di versi terbaru.",
-      "priority_score": 8.5
-    },
-    {
-      "group_key": "perf-loading-slow",
-      "member_review_ids": [503],
-      "judul": "Waktu loading aplikasi terlalu lama",
-      "ringkasan": "Loading lama dan timeout dilaporkan oleh pengguna.",
-      "category": "performance",
-      "severity": "medium",
-      "module": "Performance",
-      "feature": "Loading",
-      "recommendation": "Optimasi query database dan caching pada halaman utama.",
-      "priority_score": 6.0
+      "module": "autentikasi",
+      "feature": "login",
+      "frequency": 1,
+      "priority_score": 7.3,
+      "recommendation": "Periksa alur autentikasi dan reproduksi kegagalan login menggunakan akun uji.",
+      "recommendation_status": "suggestion_requires_validation",
+      "proposed_status": "Pending",
+      "persisted": false,
+      "judul": "Pengguna tidak dapat login",
+      "ringkasan": "1 ulasan cocok dengan aturan login_failure; perlu review konteks."
     }
   ]
 }

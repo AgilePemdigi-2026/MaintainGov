@@ -1,0 +1,35 @@
+' Reconstructed from current Sprint 1 source; review pending. 2026-10-24.
+@startuml
+skinparam monochrome true
+skinparam defaultFontName Serif
+actor Pengguna
+boundary "Next.js UI" as UI
+control "AuthController + middleware" as API
+entity "Pengguna / session store" as DB
+Pengguna -> UI: isi credential
+UI -> API: GET /auth/csrf
+API --> UI: token CSRF + cookie sesi
+UI -> API: POST /auth/login + token
+API -> DB: cari akun, verifikasi hash
+alt credential salah
+ API --> UI: 401, pesan generik
+else credential benar
+ API -> DB: login dan regenerasi sesi
+ API --> UI: identitas + role
+ UI -> API: GET /auth/me (cookie)
+ API -> DB: verifikasi sesi
+ API --> UI: identitas + role
+ UI -> API: request fitur terproteksi
+ alt role tidak berhak
+  API --> UI: 403
+ else role berhak
+  API --> UI: hasil fitur
+ end
+ Pengguna -> UI: Keluar
+ UI -> API: POST /auth/logout + CSRF
+ API -> DB: invalidasi sesi / remember token
+ API --> UI: 200
+ UI -> API: request dengan cookie lama
+ API --> UI: 401
+end
+@enduml

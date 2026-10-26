@@ -1,0 +1,20 @@
+' Reconstructed from current Sprint 1 source; review pending. 2026-10-24.
+@startuml
+skinparam monochrome true
+skinparam defaultFontName Serif
+component "Next.js / TypeScript" as Web
+component "Laravel API" as API
+component "Laravel queue worker" as Worker
+component "FastAPI + private model" as NLP
+database "MySQL 8" as DB
+Web --> API : cookie + CSRF\nJSON / multipart
+API --> DB : auth, upload, paginated results
+Worker --> DB : database queue,\nattempt guard, atomic results
+Worker --> NLP : internal JSON
+NLP --> Worker : per-review results,\ncandidate cases
+note bottom of NLP
+ Model and source dataset remain private.
+ Sentiment target: rating proxy.
+ Domain rules: pending team review.
+end note
+@enduml

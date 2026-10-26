@@ -9,8 +9,8 @@ class FeedbackCsv
     public function parse(string $path): array
     {
         $raw = file_get_contents($path);
-        $fail = fn (string $message) => throw ValidationException::withMessages(['file' => $message]);
-        if (!$raw || !mb_check_encoding($raw, 'UTF-8')) {
+        $fail = fn (string $message) => throw ValidationException::withMessages(['file' => 'Struktur CSV tidak sesuai. '.$message]);
+        if (! $raw || ! mb_check_encoding($raw, 'UTF-8')) {
             $fail('CSV kosong atau encoding bukan UTF-8.');
         }
         $stream = fopen('php://temp', 'r+');
@@ -19,7 +19,7 @@ class FeedbackCsv
         try {
             $header = fgetcsv($stream, null, ',', '"', '');
             $required = ['reviewId', 'Review Teks', 'rating', 'date'];
-            if (!$header || count($header) !== count(array_unique($header)) || array_diff($required, $header)) {
+            if (! $header || count($header) !== count(array_unique($header)) || array_diff($required, $header)) {
                 $fail('Kolom wajib: reviewId, Review Teks, rating, date; nama kolom tidak boleh ganda.');
             }
             $rows = [];
@@ -36,8 +36,8 @@ class FeedbackCsv
                 $text = $row['Review Teks'];
                 $date = \DateTimeImmutable::createFromFormat('!Y-m-d H:i:s', $row['date']);
                 if ($id === '' || mb_strlen($id) > 100 || isset($seen[$id]) || $text === '' || mb_strlen($text) > 10000
-                    || !in_array($row['rating'], ['1', '2', '3', '4', '5'], true)
-                    || !$date || $date->format('Y-m-d H:i:s') !== $row['date']) {
+                    || ! in_array($row['rating'], ['1', '2', '3', '4', '5'], true)
+                    || ! $date || $date->format('Y-m-d H:i:s') !== $row['date']) {
                     $fail('Baris tidak valid: periksa ID unik, teks, rating 1–5 dan tanggal YYYY-MM-DD HH:MM:SS.');
                 }
                 $seen[$id] = true;
@@ -47,9 +47,10 @@ class FeedbackCsv
                     $fail('Maksimum 10.000 ulasan per unggahan.');
                 }
             }
-            if (!$rows) {
+            if (! $rows) {
                 $fail('CSV tidak berisi ulasan.');
             }
+
             return $rows;
         } finally {
             fclose($stream);

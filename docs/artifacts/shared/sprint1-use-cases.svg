@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?><svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" contentScriptType="application/ecmascript" contentStyleType="text/css" height="336px" preserveAspectRatio="none" style="width:484px;height:336px;" version="1.1" viewBox="0 0 484 336" width="484px" zoomAndPan="magnify"><defs><filter height="300%" id="f17gku9clonq7o" width="300%" x="-1" y="-1"><feGaussianBlur result="blurOut" stdDeviation="2.0"/><feColorMatrix in="blurOut" result="blurOut2" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .4 0"/><feOffset dx="4.0" dy="4.0" in="blurOut2" result="blurOut3"/><feBlend in="SourceGraphic" in2="blurOut3" mode="normal"/></filter></defs><g><!--MD5=[c70bc571097e390e61223b66ee07bf4c]
+cluster MaintainGov - Sprint 1--><rect fill="#FFFFFF" filter="url(#f17gku9clonq7o)" height="237" style="stroke: #000000; stroke-width: 1.5;" width="243" x="208.5" y="80"/><text fill="#000000" font-family="Serif" font-size="14" font-weight="bold" lengthAdjust="spacingAndGlyphs" textLength="178" x="241" y="95.1455">MaintainGov - Sprint 1</text><ellipse cx="329.9934" cy="217.1987" fill="#F8F8F8" filter="url(#f17gku9clonq7o)" rx="83.9934" ry="19.1987" style="stroke: #383838; stroke-width: 1.5;"/><text fill="#000000" font-family="Serif" font-size="14" lengthAdjust="spacingAndGlyphs" textLength="140" x="259.9934" y="221.8471">Login dan hak akses</text><ellipse cx="330.1482" cy="286.0236" fill="#F8F8F8" filter="url(#f17gku9clonq7o)" rx="37.6482" ry="14.5236" style="stroke: #383838; stroke-width: 1.5;"/><text fill="#000000" font-family="Serif" font-size="14" lengthAdjust="spacingAndGlyphs" textLength="49" x="305.6482" y="290.6721">Logout</text><ellipse cx="330.1419" cy="139.0284" fill="#F8F8F8" filter="url(#f17gku9clonq7o)" rx="105.6419" ry="23.5284" style="stroke: #383838; stroke-width: 1.5;"/><text fill="#000000" font-family="Serif" font-size="14" lengthAdjust="spacingAndGlyphs" textLength="41" x="309.6419" y="131.7105">UC01</text><text fill="#000000" font-family="Serif" font-size="14" lengthAdjust="spacingAndGlyphs" textLength="163" x="248.6419" y="148.0073">Menganalisis Feedback</text><!--MD5=[c72e14692f063a08d1023b5b76acc947]
+entity M--><ellipse cx="67" cy="139" fill="#F8F8F8" filter="url(#f17gku9clonq7o)" rx="8" ry="8" style="stroke: #383838; stroke-width: 1.5;"/><path d="M67,147 L67,174 M54,155 L80,155 M67,174 L54,189 M67,174 L80,189 " fill="none" filter="url(#f17gku9clonq7o)" style="stroke: #383838; stroke-width: 1.5;"/><text fill="#000000" font-family="Serif" font-size="14" lengthAdjust="spacingAndGlyphs" textLength="122" x="6" y="207.4951">Tim Maintenance</text><!--MD5=[118f42602524ad482f02b27ef22fc383]
+entity D--><ellipse cx="67" cy="255" fill="#F8F8F8" filter="url(#f17gku9clonq7o)" rx="8" ry="8" style="stroke: #383838; stroke-width: 1.5;"/><path d="M67,263 L67,290 M54,271 L80,271 M67,290 L54,305 M67,290 L80,305 " fill="none" filter="url(#f17gku9clonq7o)" style="stroke: #383838; stroke-width: 1.5;"/><text fill="#000000" font-family="Serif" font-size="14" lengthAdjust="spacingAndGlyphs" textLength="71" x="31.5" y="323.4951">Developer</text><path d="M188,8.5 L188,63.8984 A0,0 0 0 0 188,63.8984 L326,63.8984 L330,115.26 L334,63.8984 L472,63.8984 A0,0 0 0 0 472,63.8984 L472,18.5 L462,8.5 L188,8.5 A0,0 0 0 0 188,8.5 " fill="#ECECEC" filter="url(#f17gku9clonq7o)" style="stroke: #383838; stroke-width: 1.0;"/><path d="M462,8.5 L462,18.5 L472,18.5 L462,8.5 " fill="#ECECEC" style="stroke: #383838; stroke-width: 1.0;"/><text fill="#000000" font-family="Serif" font-size="13" lengthAdjust="spacingAndGlyphs" textLength="219" x="194" y="25.5669">Prasyarat: sesi Maintenance aktif.</text><text fill="#000000" font-family="Serif" font-size="13" lengthAdjust="spacingAndGlyphs" textLength="190" x="194" y="40.6997">Hasil: kandidat case Pending.</text><text fill="#000000" font-family="Serif" font-size="13" lengthAdjust="spacingAndGlyphs" textLength="263" x="194" y="55.8325">Validasi case/backlog berada di Sprint 2.</text><!--MD5=[69382d5efdb9be70b68ce4564f3fd2d9]
+link M to Login--><path d="M128.21,180.84 C166.96,187.82 217.51,196.92 258.19,204.25 " fill="none" id="M-&gt;Login" style="stroke: #383838; stroke-width: 1.0;"/><polygon fill="#383838" points="263.61,205.22,255.4622,199.6871,258.6893,204.3331,254.0432,207.5602,263.61,205.22" style="stroke: #383838; stroke-width: 1.0;"/><!--MD5=[95d5cd1080addbb0f9bee299ef62b4eb]
+link D to Login--><path d="M102.65,276.72 C126.61,270.31 159.23,261.61 188,254 C214.72,246.93 244.31,239.16 269.45,232.57 " fill="none" id="D-&gt;Login" style="stroke: #383838; stroke-width: 1.0;"/><polygon fill="#383838" points="274.42,231.27,264.7037,229.6597,269.5804,232.5263,266.7138,237.403,274.42,231.27" style="stroke: #383838; stroke-width: 1.0;"/><!--MD5=[5c932a0dac1f20f3ba27cb5d02a7245d]
+link M to Logout--><path d="M117.74,210.67 C138.43,225.86 163.34,242.06 188,253 C220.45,267.4 260,275.95 288.95,280.73 " fill="none" id="M-&gt;Logout" style="stroke: #383838; stroke-width: 1.0;"/><polygon fill="#383838" points="294.23,281.58,285.9872,276.1897,289.2946,280.7789,284.7054,284.0863,294.23,281.58" style="stroke: #383838; stroke-width: 1.0;"/><!--MD5=[f1edfdd75a3c0689f297f51b4cbb573f]
+link D to Logout--><path d="M102.66,286 C150.25,286 235.74,286 286.94,286 " fill="none" id="D-&gt;Logout" style="stroke: #383838; stroke-width: 1.0;"/><polygon fill="#383838" points="292.09,286,283.09,282,287.09,286,283.09,290,292.09,286" style="stroke: #383838; stroke-width: 1.0;"/><!--MD5=[97aa01224ddd7f6948829eadd89d41b4]
+link M to Analysis--><path d="M128.21,162.85 C158.84,159.21 196.84,154.7 231.52,150.58 " fill="none" id="M-&gt;Analysis" style="stroke: #383838; stroke-width: 1.0;"/><polygon fill="#383838" points="236.61,149.97,227.1946,147.0804,231.6462,150.5708,228.1559,155.0225,236.61,149.97" style="stroke: #383838; stroke-width: 1.0;"/><!--MD5=[36baad4c1fb13825ab726b06178179b7]
+@startuml
+skinparam monochrome true
+skinparam defaultFontName Serif
+left to right direction
+actor "Tim Maintenance" as M
+actor "Developer" as D
+rectangle "MaintainGov - Sprint 1" {
+ usecase "Login dan hak akses" as Login
+ usecase "Logout" as Logout
+ usecase "UC01\nMenganalisis Feedback" as Analysis
+}
+M - -> Login
+D - -> Login
+M - -> Logout
+D - -> Logout
+M - -> Analysis
+note bottom of Analysis
+  Prasyarat: sesi Maintenance aktif.
+  Hasil: kandidat case Pending.
+  Validasi case/backlog berada di Sprint 2.
+end note
+@enduml
+
+PlantUML version 1.2020.02(Sun Mar 01 17:22:07 ICT 2020)
+(GPL source distribution)
+Java Runtime: OpenJDK Runtime Environment
+JVM: OpenJDK 64-Bit Server VM
+Java Version: 21.0.12+8-1-24.04-Ubuntu
+Operating System: Linux
+Default Encoding: UTF-8
+Language: en
+Country: null
+--></g></svg>

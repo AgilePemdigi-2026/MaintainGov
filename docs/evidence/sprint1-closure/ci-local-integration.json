@@ -1,0 +1,15 @@
+{
+  "date": "2026-10-26",
+  "model_kind": "synthetic CI artifact",
+  "http_bdd": {
+    "passed": 8,
+    "failed": 0
+  },
+  "service_down_bdd": {
+    "passed": 1,
+    "failed": 0
+  },
+  "benchmark_cli": "benchmark-cli.json",
+  "remote_workflow_executed": false,
+  "does_not_establish_actual_model_accuracy": true
+}

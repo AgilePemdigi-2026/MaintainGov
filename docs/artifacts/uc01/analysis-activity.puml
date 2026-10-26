@@ -1,0 +1,27 @@
+' Reconstructed from current Sprint 1 source; review pending. 2026-10-24.
+@startuml
+skinparam monochrome true
+skinparam defaultFontName Serif
+start
+:Maintenance memilih CSV;
+:Validasi role, CSRF, ukuran,\nkolom dan seluruh record;
+if (CSV valid?) then (ya)
+ :Transaksi batch Diproses,\nulasan dan database job;
+ :Respons 202 + batch ID;
+ :Worker mengklaim attempt aktif;
+ :FastAPI preprocessing dan analisis;
+ if (Output valid dan attempt masih aktif?) then (ya)
+  :Transaksi hasil per ulasan,\ncase Pending dan sumber ulasan;
+  :Batch Selesai;
+  :UI menampilkan hasil berpaginasi;
+ else (tidak)
+  :Jika attempt aktif, tandai Gagal;
+  :Tanpa hasil parsial;
+  :Pemilik dapat retry attempt berikutnya;
+ endif
+else (tidak)
+ :422, alasan dan kolom wajib;
+ :Nonaktifkan Analisis sampai file diganti;
+endif
+stop
+@enduml
