@@ -1,4 +1,4 @@
-/* Token diambil dari PNG Figma "Login - MaintainGov" (frame 1280x800). */
+﻿/* Token diambil dari PNG Figma "Login - MaintainGov" (frame 1280x800). */
 :root {
   --navy: #000033;
   --blue: #003399;
@@ -364,3 +364,466 @@ body {
     display: none;
   }
 }
+
+/* Font utama MaintainGov */
+body {
+  font-family: var(--font-sans), sans-serif;
+}
+
+/* ---------- Analisis Feedback ---------- */
+.analysis-page {
+  min-height: 100vh;
+  background: #f5f7fc;
+  color: var(--navy);
+  font-family: var(--font-sans), sans-serif;
+}
+
+/* Header gradasi */
+.analysis-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 18px 32px;
+  background: linear-gradient(
+    110deg,
+    #000033 0%,
+    #000066 20%,
+    #003399 40%,
+    #3366cc 65%,
+    #99bbff 100%
+  );
+  border-bottom: 1px solid var(--blue-line);
+}
+
+/* Logo MaintainGov */
+.analysis-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 20px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.analysis-brand__logo {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: var(--blue-light);
+  color: var(--navy);
+  font-size: 22px;
+}
+
+/* Bagian kanan header */
+.analysis-header__right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  color: #fff;
+}
+
+.analysis-user {
+  font-size: 14px;
+  color: #fff;
+}
+
+/* Tombol keluar */
+.analysis-logout {
+  padding: 9px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.analysis-logout:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+/* Layout utama */
+.analysis-layout {
+  display: grid;
+  grid-template-columns: 230px minmax(0, 1fr);
+  min-height: calc(100vh - 73px);
+}
+
+.analysis-sidebar {
+  padding: 24px 16px;
+  background: #fff;
+  border-right: 1px solid var(--blue-line);
+}
+
+.analysis-sidebar a {
+  display: block;
+  margin-bottom: 8px;
+  padding: 12px;
+  border-radius: 6px;
+  color: var(--text-body);
+  text-decoration: none;
+  font-size: 14px;
+}
+
+.analysis-sidebar a.active,
+.analysis-sidebar a:hover {
+  background: #eaf0ff;
+  color: var(--blue);
+  font-weight: 600;
+}
+
+.analysis-sidebar__label {
+  padding: 0 12px;
+  margin: 0 0 16px;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.analysis-menu-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  margin-right: 8px;
+  font-size: 16px;
+}
+
+.analysis-sidebar__footer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 32px;
+  padding: 18px 8px 0;
+  border-top: 1px solid var(--blue-line);
+  overflow-wrap: anywhere;
+}
+
+.analysis-avatar {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #eaf0ff;
+  color: var(--blue);
+  font-weight: 700;
+}
+
+.analysis-sidebar__footer strong,
+.analysis-sidebar__footer small {
+  display: block;
+  font-size: 12px;
+}
+
+.analysis-sidebar__footer small {
+  margin-top: 3px;
+  color: var(--text-muted);
+}
+
+/* Konten */
+.analysis-content {
+  min-width: 0;
+  padding: 32px;
+}
+
+.analysis-heading-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+
+.analysis-eyebrow {
+  margin: 0 0 8px;
+  color: var(--blue);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.analysis-title {
+  margin: 0;
+  font-size: 28px;
+  line-height: 1.3;
+  font-weight: 700;
+}
+
+.analysis-description {
+  max-width: 760px;
+  margin: 10px 0 24px;
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+/* Card */
+.analysis-card {
+  margin-bottom: 24px;
+  padding: 24px;
+  border: 1px solid var(--blue-line);
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 3px 12px rgba(0, 0, 51, 0.04);
+}
+
+.analysis-card__heading {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 22px;
+}
+
+.analysis-card__heading h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.analysis-card__heading p {
+  margin: 5px 0 0;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.analysis-card__icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 42px;
+  height: 42px;
+  border-radius: 9px;
+  background: #eaf0ff;
+  color: var(--blue);
+  font-size: 22px;
+  font-weight: 700;
+}
+
+/* Upload CSV */
+.analysis-upload {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+}
+
+.analysis-dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 30px 16px;
+  border: 1.5px dashed #99bbff;
+  border-radius: 9px;
+  background: #f9fbff;
+  text-align: center;
+  cursor: pointer;
+}
+
+.analysis-dropzone:hover {
+  border-color: var(--blue);
+  background: #f0f5ff;
+}
+
+.analysis-dropzone strong {
+  overflow-wrap: anywhere;
+  font-size: 14px;
+}
+
+.analysis-dropzone span {
+  color: var(--text-body);
+  font-size: 13px;
+}
+
+.analysis-dropzone small {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.analysis-file-icon {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #eaf0ff;
+  color: var(--blue) !important;
+  font-size: 26px !important;
+}
+
+.analysis-dropzone input {
+  max-width: 100%;
+  font: inherit;
+  font-size: 12px;
+}
+
+.analysis-format-note {
+  margin: 16px 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.analysis-primary-button {
+  min-height: 42px;
+  padding: 11px 20px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--blue);
+  color: #fff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.analysis-primary-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.analysis-primary-button:not(:disabled):hover {
+  background: #002777;
+}
+
+/* Status dan hasil */
+.analysis-status {
+  margin-left: auto;
+  padding: 6px 10px;
+  border-radius: 20px;
+  background: #eaf0ff;
+  color: var(--blue);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.analysis-section-title {
+  margin: 26px 0 16px;
+  font-size: 16px;
+}
+
+.analysis-case {
+  margin-bottom: 12px;
+  padding: 18px;
+  border: 1px solid var(--blue-line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.analysis-case h4 {
+  margin: 0 0 8px;
+  font-size: 14px;
+}
+
+.analysis-case p {
+  color: var(--text-body);
+  font-size: 13px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+.analysis-case details {
+  margin-top: 12px;
+  color: var(--blue);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+/* Tabel hasil */
+.analysis-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--blue-line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.analysis-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 13px;
+}
+
+.analysis-table th {
+  background: #eef3ff;
+  color: var(--navy);
+  font-weight: 600;
+}
+
+.analysis-table th,
+.analysis-table td {
+  padding: 14px 16px;
+  border-bottom: 1px solid #e8edf7;
+  vertical-align: top;
+}
+
+.analysis-table td {
+  color: var(--text-body);
+  overflow-wrap: anywhere;
+}
+
+.analysis-table tr:last-child td {
+  border-bottom: 0;
+}
+
+/* Pesan error */
+.analysis-error {
+  margin-top: 16px;
+  color: #b42318;
+  font-size: 14px;
+}
+
+/* Responsif */
+@media (max-width: 760px) {
+  .analysis-header {
+    padding: 16px;
+  }
+
+  .analysis-header__right {
+    gap: 8px;
+  }
+
+  .analysis-user {
+    max-width: 100px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .analysis-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .analysis-sidebar {
+    border-right: 0;
+    border-bottom: 1px solid var(--blue-line);
+  }
+
+  .analysis-content {
+    padding: 20px 16px;
+  }
+
+  .analysis-card {
+    padding: 16px;
+  }
+
+  .analysis-card__heading {
+    flex-wrap: wrap;
+  }
+
+  .analysis-status {
+    margin-left: 0;
+  }
+
+  .analysis-dropzone {
+    padding: 24px 12px;
+  }
+}
+
