@@ -112,9 +112,11 @@ function PriorityBadge({ score }: { score: number | string }) {
   );
 }
 
-function SectionCard({ children }: { children: ReactNode }) {
+function SectionCard({ children, labelledBy, busy }: { children: ReactNode; labelledBy: string; busy: boolean }) {
   return (
     <section
+      aria-labelledby={labelledBy}
+      aria-busy={busy}
       style={{
         background: "#FFFFFF",
         border: "1px solid #E2E8F0",
@@ -442,7 +444,8 @@ function CaseCard({
         onClick={() => setOpen((value) => !value)}
         style={{ ...buttonStyle, marginTop: 16 }}
       >
-        {open ? "Tutup ulasan asal ↑" : "Lihat ulasan pembentuk case ↓"}
+        {open ? "Tutup ulasan asal" : "Lihat ulasan pembentuk case"}
+        <span aria-hidden="true">{open ? " ↑" : " ↓"}</span>
       </button>
 
       {open && <SourceReviews batchId={batchId} caseId={item.case_id} />}
@@ -514,7 +517,7 @@ export default function AnalysisResults({
         </p>
       </div>
 
-      <SectionCard>
+      <SectionCard labelledBy="case-heading" busy={cases.loading}>
         <div style={{ marginBottom: 20 }}>
           <h2
             id="case-heading"
@@ -572,8 +575,8 @@ export default function AnalysisResults({
           >
             <option value="Semua">Semua Status</option>
             <option value="Pending">Pending</option>
-            <option value="Approved">Approved</option>
-            <option value="Rejected">Rejected</option>
+            <option value="Valid">Valid</option>
+            <option value="Tidak Valid">Tidak Valid</option>
           </select>
 
           <button
@@ -644,7 +647,7 @@ export default function AnalysisResults({
         )}
       </SectionCard>
 
-      <SectionCard>
+      <SectionCard labelledBy="review-heading" busy={reviews.loading}>
         <div style={{ marginBottom: 20 }}>
           <h2
             id="review-heading"
