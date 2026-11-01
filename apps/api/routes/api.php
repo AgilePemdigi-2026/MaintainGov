@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AnalysisController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\MaintenanceBacklogController;
 use App\Http\Controllers\MaintenanceCaseController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -22,6 +23,13 @@ Route::prefix('v1')->group(function () {
         Route::get('/maintenance-cases', [MaintenanceCaseController::class, 'index']);
         Route::get('/maintenance-cases/{id}', [MaintenanceCaseController::class, 'show'])->whereNumber('id');
         Route::post('/maintenance-cases/{id}/validate', [MaintenanceCaseController::class, 'validate'])->whereNumber('id');
+    });
+
+    // UC03: backlog hasil validasi case (Tim Maintenance)
+    Route::middleware(['auth', 'role:Tim Maintenance'])->group(function () {
+        Route::get('/maintenance-backlog', [MaintenanceBacklogController::class, 'index']);
+        Route::get('/maintenance-backlog/{id}', [MaintenanceBacklogController::class, 'show'])->whereNumber('id');
+        Route::patch('/maintenance-backlog/{id}', [MaintenanceBacklogController::class, 'update'])->whereNumber('id');
     });
 
     // Public routes
