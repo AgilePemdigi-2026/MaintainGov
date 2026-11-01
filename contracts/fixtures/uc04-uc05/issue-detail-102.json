@@ -1,0 +1,37 @@
+{
+  "success": true,
+  "data": {
+    "issue_id": 102,
+    "backlog_id": 502,
+    "title": "Sesi login berakhir terlalu cepat",
+    "summary": "Sesi pengguna berakhir sebelum batas waktu dan memaksa login ulang.",
+    "priority": "High",
+    "severity": "Medium",
+    "module": "Autentikasi",
+    "status": "Ready for Pull Request",
+    "assigned_to": {
+      "user_id": 2,
+      "nama": "Andi Developer",
+      "github_login": null
+    },
+    "assigned_at": "2026-10-31T10:00:00+00:00",
+    "source_branch": "fix/login-session",
+    "push_status": "detected",
+    "last_push": {
+      "branch": "fix/login-session",
+      "commit": "mock-commit-login-001",
+      "pushed_at": "2026-11-01T09:15:00+00:00"
+    },
+    "repository": {
+      "owner": "AgilePemdigi-2026",
+      "name": "MaintainGov",
+      "full_name": "AgilePemdigi-2026/MaintainGov"
+    },
+    "is_mock": true
+  },
+  "meta": {
+    "is_mock": true,
+    "mock_source": "uc04-uc05-fixtures",
+    "note": "Data mock deterministik. Tidak ada perubahan pada database atau GitHub."
+  }
+}

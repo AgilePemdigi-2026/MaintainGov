@@ -142,6 +142,7 @@ Bantuan lintas anggota diperbolehkan. Pembagian ini menunjukkan tanggung jawab f
 | :--- | :--- |
 | [Setup UC01](docs/SETUP_UC01.md) | Menjalankan alur aplikasi terintegrasi |
 | [Integrasi dan pengujian](docs/UC01_INTEGRATION.md) | Kontrak, persistensi, kegagalan dan bukti lokal |
+| [Integrasi GitHub](docs/GITHUB_INTEGRATION.md) | Koneksi read-only, status error, mock UC04–UC05 dan batas integrasi |
 | [Master Plan](docs/MASTERPLAN.md) | Acuan keputusan dan pembagian tanggung jawab |
 | [Arsitektur](docs/ARCHITECTURE.md) | Komponen, rancangan API dan perubahan data |
 | [Tugas Week 10](docs/WEEK10_EXECUTION.md) | Urutan pekerjaan dan dependensi |

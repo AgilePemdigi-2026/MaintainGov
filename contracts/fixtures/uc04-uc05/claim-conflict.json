@@ -1,0 +1,13 @@
+{
+  "success": false,
+  "message": "Issue telah diambil Developer lain",
+  "error": {
+    "code": "ISSUE_ALREADY_ASSIGNED",
+    "message": "Issue telah diambil Developer lain"
+  },
+  "meta": {
+    "is_mock": true,
+    "mock_source": "uc04-uc05-fixtures",
+    "note": "Data mock deterministik. Tidak ada perubahan pada database atau GitHub."
+  }
+}

@@ -1,0 +1,93 @@
+{
+  "success": true,
+  "data": [
+    {
+      "issue_id": 101,
+      "backlog_id": 501,
+      "title": "Perbaikan gagal login setelah pembaruan",
+      "summary": "Pengguna tidak dapat masuk setelah pembaruan terakhir dan menerima pesan kesalahan umum.",
+      "priority": "High",
+      "severity": "High",
+      "module": "Autentikasi",
+      "status": "Ready for Development",
+      "assigned_to": null,
+      "assigned_at": null,
+      "source_branch": null,
+      "push_status": "not_detected",
+      "last_push": null,
+      "repository": {
+        "owner": "AgilePemdigi-2026",
+        "name": "MaintainGov",
+        "full_name": "AgilePemdigi-2026/MaintainGov"
+      },
+      "is_mock": true
+    },
+    {
+      "issue_id": 102,
+      "backlog_id": 502,
+      "title": "Sesi login berakhir terlalu cepat",
+      "summary": "Sesi pengguna berakhir sebelum batas waktu dan memaksa login ulang.",
+      "priority": "High",
+      "severity": "Medium",
+      "module": "Autentikasi",
+      "status": "Ready for Pull Request",
+      "assigned_to": {
+        "user_id": 2,
+        "nama": "Andi Developer",
+        "github_login": null
+      },
+      "assigned_at": "2026-10-31T10:00:00+00:00",
+      "source_branch": "fix/login-session",
+      "push_status": "detected",
+      "last_push": {
+        "branch": "fix/login-session",
+        "commit": "mock-commit-login-001",
+        "pushed_at": "2026-11-01T09:15:00+00:00"
+      },
+      "repository": {
+        "owner": "AgilePemdigi-2026",
+        "name": "MaintainGov",
+        "full_name": "AgilePemdigi-2026/MaintainGov"
+      },
+      "is_mock": true
+    },
+    {
+      "issue_id": 103,
+      "backlog_id": 503,
+      "title": "Halaman dashboard lambat dimuat",
+      "summary": "Dashboard membutuhkan waktu lebih dari lima detik untuk menampilkan data.",
+      "priority": "Medium",
+      "severity": "Medium",
+      "module": "Dashboard",
+      "status": "Sedang Dikerjakan",
+      "assigned_to": {
+        "user_id": 3,
+        "nama": "Budi Developer",
+        "github_login": null
+      },
+      "assigned_at": "2026-10-30T08:00:00+00:00",
+      "source_branch": "fix/dashboard-loading",
+      "push_status": "detected",
+      "last_push": {
+        "branch": "fix/dashboard-loading",
+        "commit": "mock-commit-dashboard-001",
+        "pushed_at": "2026-11-01T08:45:00+00:00"
+      },
+      "repository": {
+        "owner": "AgilePemdigi-2026",
+        "name": "MaintainGov",
+        "full_name": "AgilePemdigi-2026/MaintainGov"
+      },
+      "is_mock": true
+    }
+  ],
+  "meta": {
+    "is_mock": true,
+    "mock_source": "uc04-uc05-fixtures",
+    "note": "Data mock deterministik. Tidak ada perubahan pada database atau GitHub.",
+    "current_page": 1,
+    "last_page": 1,
+    "per_page": 25,
+    "total": 3
+  }
+}

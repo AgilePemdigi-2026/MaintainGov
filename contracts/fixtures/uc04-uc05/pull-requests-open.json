@@ -1,0 +1,33 @@
+{
+  "success": true,
+  "data": [
+    {
+      "pull_request_id": 7001,
+      "issue_id": 102,
+      "status": "Open",
+      "mock_state": "simulated_open",
+      "lifecycle_state": "open",
+      "review_state": "pending",
+      "source_branch": "fix/login-session",
+      "target_branch": "main",
+      "title": "Perbaikan sesi login",
+      "description": "Menyelaraskan masa berlaku sesi dengan konfigurasi aplikasi.",
+      "github_pr_number": null,
+      "github_pr_url": null,
+      "created_by": {
+        "user_id": 2,
+        "nama": "Andi Developer",
+        "github_login": null
+      },
+      "created_at": "2026-11-01T09:30:00+00:00",
+      "is_mock": true
+    }
+  ],
+  "meta": {
+    "is_mock": true,
+    "mock_source": "uc04-uc05-fixtures",
+    "note": "Data mock deterministik. Tidak ada perubahan pada database atau GitHub.",
+    "issue_id": 102,
+    "total": 1
+  }
+}
