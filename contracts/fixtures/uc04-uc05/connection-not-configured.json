@@ -1,0 +1,11 @@
+{
+  "success": false,
+  "message": "GitHub integration is not configured.",
+  "error": {
+    "code": "GITHUB_NOT_CONFIGURED",
+    "message": "GitHub integration is not configured."
+  },
+  "data": {
+    "status": "unavailable"
+  }
+}

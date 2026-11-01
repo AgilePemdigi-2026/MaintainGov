@@ -1,0 +1,34 @@
+{
+  "success": true,
+  "data": {
+    "issue_id": 102,
+    "source_branch": "fix/login-session",
+    "suggested_target_branch": "main",
+    "branches": [
+      {
+        "name": "main",
+        "is_default": true,
+        "sha": "mock-main-sha",
+        "protected": true
+      },
+      {
+        "name": "develop",
+        "is_default": false,
+        "sha": "mock-develop-sha",
+        "protected": false
+      },
+      {
+        "name": "fix/login-session",
+        "is_default": false,
+        "sha": "mock-login-session-sha",
+        "protected": false
+      }
+    ],
+    "is_mock": true
+  },
+  "meta": {
+    "is_mock": true,
+    "mock_source": "uc04-uc05-fixtures",
+    "note": "Data mock deterministik. Tidak ada perubahan pada database atau GitHub."
+  }
+}

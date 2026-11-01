@@ -1,0 +1,11 @@
+{
+  "success": false,
+  "message": "GitHub is temporarily unavailable.",
+  "error": {
+    "code": "GITHUB_UNAVAILABLE",
+    "message": "GitHub is temporarily unavailable."
+  },
+  "data": {
+    "status": "unavailable"
+  }
+}

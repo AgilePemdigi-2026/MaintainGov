@@ -1,0 +1,11 @@
+{
+  "success": false,
+  "message": "GitHub authentication failed.",
+  "error": {
+    "code": "GITHUB_UNAUTHORIZED",
+    "message": "GitHub authentication failed."
+  },
+  "data": {
+    "status": "unauthorized"
+  }
+}
