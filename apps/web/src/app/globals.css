@@ -423,12 +423,22 @@ body {
   display: flex;
   align-items: center;
   gap: 16px;
+  min-width: 0;
   color: #fff;
 }
 
+/* Nama panjang dipotong dengan elipsis agar header tidak melebar di layar sempit. */
 .analysis-user {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 14px;
   color: #fff;
+}
+
+.analysis-logout {
+  flex: none;
 }
 
 /* Tombol keluar */
