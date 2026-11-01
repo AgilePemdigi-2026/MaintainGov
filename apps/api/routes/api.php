@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AnalysisController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\MaintenanceCaseController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -14,6 +15,13 @@ Route::prefix('v1')->group(function () {
         Route::get('/analysis-batches/{id}/reviews', [AnalysisController::class, 'reviews'])->whereNumber('id');
         Route::get('/analysis-batches/{id}/cases', [AnalysisController::class, 'cases'])->whereNumber('id');
         Route::post('/analysis-batches/{id}/retry', [AnalysisController::class, 'retry'])->whereNumber('id');
+    });
+
+    // UC02: peninjauan dan validasi kandidat case (Tim Maintenance)
+    Route::middleware(['auth', 'role:Tim Maintenance'])->group(function () {
+        Route::get('/maintenance-cases', [MaintenanceCaseController::class, 'index']);
+        Route::get('/maintenance-cases/{id}', [MaintenanceCaseController::class, 'show'])->whereNumber('id');
+        Route::post('/maintenance-cases/{id}/validate', [MaintenanceCaseController::class, 'validate'])->whereNumber('id');
     });
 
     // Public routes
