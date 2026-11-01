@@ -186,7 +186,7 @@ jobs:
         run: |
           php apps/api/artisan cache:clear
           python -m behave tests/bdd/api_sprint1.feature --tags="not @service_down" --format json --outfile tmp/bdd-http.json
-                - name: PHP Behat Sprint 1 with a fresh login quota
+      - name: PHP Behat Sprint 1 with a fresh login quota
         working-directory: apps/api
         run: |
           set -o pipefail
