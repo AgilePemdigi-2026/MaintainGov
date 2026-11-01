@@ -6,11 +6,11 @@ import { useParams } from "next/navigation";
 import { ApiError } from "@/lib/api";
 import { RoleGate, useSession } from "@/components/workspace/session";
 import {
-  Alert, BacklogStatusPill, CaseStatusPill, EmptyState, ErrorState, InfoRow, PageHeader, PriorityBar, SeverityBadge, SkeletonRows,
+  Alert, CaseStatusPill, EmptyState, ErrorState, InfoRow, PageHeader, PriorityBar, SeverityBadge, SkeletonRows,
 } from "@/components/workspace/ui";
 import { sprint2Api } from "@/lib/sprint2/client";
 import { MESSAGES, backlogCode, caseCode, formatDateTime, priorityLabel } from "@/lib/sprint2/labels";
-import type { CaseDecision, MaintenanceBacklog, MaintenanceCaseDetail } from "@/lib/sprint2/types";
+import type { CaseDecision, MaintenanceCaseDetail } from "@/lib/sprint2/types";
 
 const NOT_FOUND = "Maintenance Case tidak ditemukan";
 
@@ -35,7 +35,6 @@ function CaseDetail({ id }: { id: number }) {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
-  const [backlog, setBacklog] = useState<MaintenanceBacklog | null>(null);
   const [confirming, setConfirming] = useState<CaseDecision | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
@@ -67,8 +66,9 @@ function CaseDetail({ id }: { id: number }) {
     setSuccess(null);
     try {
       const result = await sprint2Api.validateCase(id, decision);
-      setData(prev => (prev ? { ...prev, ...result.case } : prev));
-      setBacklog(decision === "Valid" ? result.backlog : null);
+      setData(prev => (prev ? {
+        ...prev, status_validasi: result.status_validasi, validated_at: result.validated_at, backlog_id: result.backlog_id,
+      } : prev));
       setSuccess(decision === "Valid" ? MESSAGES.caseValid : MESSAGES.caseInvalid);
       setConfirming(null);
     } catch (err) {
@@ -93,7 +93,7 @@ function CaseDetail({ id }: { id: number }) {
   }
 
   const isPending = data.status_validasi === "Pending";
-  const backlogId = backlog?.backlog_id ?? data.backlog_id ?? null;
+  const backlogId = data.backlog_id ?? null;
   const reviews = data.reviews ?? [];
 
   return (
@@ -151,7 +151,7 @@ function CaseDetail({ id }: { id: number }) {
                 <article key={review.review_id} className="ws-review">
                   <div className="ws-review__meta">
                     <span>{review.sumber || review.source_review_id} · Rating {review.rating}/5 {"★".repeat(Math.max(0, Math.min(5, review.rating)))}</span>
-                    <span>{formatDateTime(review.tanggal)}</span>
+                    <span>{formatDateTime(review.tanggal_ulasan)}</span>
                   </div>
                   <p className="ws-review__text">&ldquo;{review.teks_ulasan}&rdquo;</p>
                 </article>
@@ -183,7 +183,6 @@ function CaseDetail({ id }: { id: number }) {
               <div className="ws-card__body">
                 <dl className="ws-info">
                   <InfoRow label="ID">{backlogCode(backlogId)}</InfoRow>
-                  {backlog && <InfoRow label="Status"><BacklogStatusPill status={backlog.status} /></InfoRow>}
                 </dl>
                 <p><Link className="ws-btn ws-btn--outline" href={`/maintenance-backlog/${backlogId}`}>Lihat Maintenance Backlog</Link></p>
               </div>

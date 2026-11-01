@@ -26,7 +26,7 @@ export interface CaseReview {
   teks_ulasan: string;
   rating: number;
   sumber?: string | null;
-  tanggal?: string | null;
+  tanggal_ulasan?: string | null;
 }
 
 export interface MaintenanceCase {
@@ -62,9 +62,14 @@ export interface CaseListQuery {
 
 export type CaseDecision = "Valid" | "Tidak Valid";
 
+/** Respons POST /maintenance-cases/{id}/validate (MaintenanceCaseController, PR #31). */
 export interface CaseValidationResult {
-  case: MaintenanceCase;
-  backlog: MaintenanceBacklog | null;
+  case_id: number;
+  status_validasi: CaseStatus;
+  validator_id: number;
+  validated_at: string;
+  keputusan: "Ya" | "Tidak";
+  backlog_id: number | null;
 }
 
 export interface PullRequestInfo {

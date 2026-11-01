@@ -6,9 +6,9 @@ Semua path berawalan `/api/v1`, memakai sesi Laravel (cookie + `X-CSRF-TOKEN` un
 
 | Method/path | Request | Respons | Role | Use case |
 | --- | --- | --- | --- | --- |
-| GET `/maintenance-cases?status=&search=&kategori=&severity=&page=` | query | `{ data: MaintenanceCase[], meta }` | Maintenance | UC02 |
-| GET `/maintenance-cases/{id}` | - | `{ data: MaintenanceCaseDetail }` (dengan `reviews[]`) | Maintenance | UC02 |
-| POST `/maintenance-cases/{id}/validation` | `{ keputusan: "Valid" \| "Tidak Valid" }` | `{ data: { case, backlog \| null } }`; 409 bila bukan Pending | Maintenance | UC02 |
+| GET `/maintenance-cases?status=&page=&per_page=` | query (default `status=Pending`) | `{ data: MaintenanceCase[], meta }` | Maintenance | UC02 (**live, PR #31**) |
+| GET `/maintenance-cases/{id}` | - | `{ data: { case, reviews[] } }` | Maintenance | UC02 (**live, PR #31**) |
+| POST `/maintenance-cases/{id}/validate` | `{ keputusan: "Ya" \| "Tidak" }` | `{ data: { case_id, status_validasi, validator_id, validated_at, keputusan, backlog_id } }`; 409 bila bukan Pending | Maintenance | UC02 (**live, PR #31**) |
 | GET `/maintenance-backlogs?status=&search=&modul=&severity=&page=` | query | `{ data: MaintenanceBacklog[], meta }` | Kedua role | UC03/UC04 |
 | GET `/maintenance-backlogs/{id}` | - | `{ data: MaintenanceBacklog }` | Kedua role | UC03/UC04 |
 | PATCH `/maintenance-backlogs/{id}` | `BacklogUpdate` | `{ data }`; 409 bila sudah dikerjakan; 422 field wajib | Maintenance | UC03 |
@@ -17,6 +17,10 @@ Semua path berawalan `/api/v1`, memakai sesi Laravel (cookie + `X-CSRF-TOKEN` un
 | POST `/maintenance-backlogs/{id}/pull-requests` | `{ target_branch, judul, deskripsi }` | `{ data: PullRequestInfo }` status Open; 503 bila GitHub gagal | Developer assignee | UC05 |
 
 Field lengkap ada di `apps/web/src/lib/sprint2/types.ts`. Catatan:
+
+- UC02 sudah memakai endpoint asli dari PR #31. Backend hanya memfilter `status`; pencarian, kategori dan severity disaring di sisi klien pada halaman yang dimuat. Opsi status "Semua" tidak tersedia karena backend selalu memfilter satu status.
+- Pipeline UC01 menyimpan `severity` dan `kategori` huruf kecil (`medium`, `bug`); UI membandingkan tanpa membedakan huruf besar/kecil.
+- Uji live UC02 (1 Nov 2026, stack lokal Laravel + MySQL 8.0.46 + FastAPI model sintetis + worker): upload CSV -> case Pending -> Tidak (`Maintenance Case tidak diteruskan`, tanpa backlog) -> Ya (`Maintenance Case berhasil divalidasi`, backlog terbentuk, 1 POST walau klik ganda) -> case hilang dari daftar Pending -> validasi ulang 409 -> Developer "Akses ditolak". Lolos.
 
 - `Maintenance Issue` = backlog dalam konteks pengerjaan (glossary SRS), sehingga UC04/UC05 memakai resource `maintenance-backlogs`.
 - `last_push` hanya diisi backend setelah push GitHub terverifikasi. UI menampilkan `Ready for Pull Request` dan tombol Ajukan PR berdasarkan status dari API, bukan dari reload halaman (UC04, bukan US04).

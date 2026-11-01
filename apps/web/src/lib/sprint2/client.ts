@@ -37,13 +37,28 @@ const json = (body: unknown): RequestInit => ({
   headers: { "Content-Type": "application/json" },
 });
 
+const includesText = (value: string, search?: string) => !search || value.toLowerCase().includes(search.toLowerCase());
+
 export const liveApi: Sprint2Api = {
   me: async () => (await apiFetch<{ data: AuthUser }>("/auth/me")).data,
   logout: async () => { await apiFetch("/auth/logout", { method: "POST" }); },
-  listCases: query => apiFetch<Paged<MaintenanceCase>>(`/maintenance-cases${qs(query)}`),
-  getCase: async id => (await apiFetch<{ data: MaintenanceCaseDetail }>(`/maintenance-cases/${id}`)).data,
-  validateCase: async (id, keputusan) =>
-    (await apiFetch<{ data: CaseValidationResult }>(`/maintenance-cases/${id}/validation`, { method: "POST", ...json({ keputusan }) })).data,
+  // Backend UC02 hanya memfilter status + paginasi; search/kategori/severity disaring di halaman yang dimuat.
+  listCases: async ({ search, kategori, severity, ...query } = {}) => {
+    const page = await apiFetch<Paged<MaintenanceCase>>(`/maintenance-cases${qs(query)}`);
+    const data = page.data
+      .filter(item => includesText(`${item.judul_issue} ${item.modul} ${item.case_id}`, search))
+      .filter(item => !kategori || item.kategori.toLowerCase() === kategori.toLowerCase())
+      .filter(item => !severity || String(item.severity).toLowerCase() === severity.toLowerCase());
+    return { ...page, data };
+  },
+  getCase: async id => {
+    const { data } = await apiFetch<{ data: { case: MaintenanceCase; reviews: MaintenanceCaseDetail["reviews"] } }>(`/maintenance-cases/${id}`);
+    return { ...data.case, reviews: data.reviews };
+  },
+  validateCase: async (id, decision) =>
+    (await apiFetch<{ data: CaseValidationResult }>(`/maintenance-cases/${id}/validate`, {
+      method: "POST", ...json({ keputusan: decision === "Valid" ? "Ya" : "Tidak" }),
+    })).data,
   listBacklogs: query => apiFetch<Paged<MaintenanceBacklog>>(`/maintenance-backlogs${qs(query)}`),
   getBacklog: async id => (await apiFetch<{ data: MaintenanceBacklog }>(`/maintenance-backlogs/${id}`)).data,
   updateBacklog: async (id, input) =>

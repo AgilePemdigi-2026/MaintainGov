@@ -23,7 +23,7 @@ interface MockState {
 }
 
 const review = (id: number, teks: string, rating: number, sumber: string, tanggal: string): CaseReview =>
-  ({ review_id: id, source_review_id: `rv-${id}`, teks_ulasan: teks, rating, sumber, tanggal });
+  ({ review_id: id, source_review_id: `rv-${id}`, teks_ulasan: teks, rating, sumber, tanggal_ulasan: tanggal });
 
 function seedCase(id: number, judul: string, kategori: string, modul: string, fitur: string, severity: string, score: number, ringkasan: string, rekomendasi: string, reviews: CaseReview[]): MaintenanceCaseDetail {
   return {
@@ -167,8 +167,10 @@ export const mockApi: Sprint2Api = {
       found.backlog_id = backlog.backlog_id;
     }
     save(state);
-    const { reviews: _reviews, ...caseOnly } = found;
-    return delay({ case: caseOnly, backlog });
+    return delay({
+      case_id: found.case_id, status_validasi: keputusan, validator_id: user.user_id, validated_at: found.validated_at,
+      keputusan: keputusan === "Valid" ? "Ya" as const : "Tidak" as const, backlog_id: backlog?.backlog_id ?? null,
+    });
   },
 
   async listBacklogs(query = {}) {

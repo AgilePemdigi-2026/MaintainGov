@@ -15,7 +15,6 @@ const STATUS_OPTIONS: { value: CaseStatus | ""; label: string }[] = [
   { value: "Pending", label: "Pending" },
   { value: "Valid", label: "Valid" },
   { value: "Tidak Valid", label: "Tidak Valid" },
-  { value: "", label: "Semua" },
 ];
 
 function CaseList() {

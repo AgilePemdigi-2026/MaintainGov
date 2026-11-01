@@ -52,7 +52,8 @@ export function priorityLabel(score: number): "High" | "Medium" | "Low" {
 }
 
 export function severityTone(severity: string): string {
-  return ({ Critical: "critical", High: "high", Medium: "medium", Low: "low" } as Record<string, string>)[severity] ?? "muted";
+  // Pipeline UC01 menyimpan severity huruf kecil ("medium"); label UI tetap mengikuti nilai dari API.
+  return ({ critical: "critical", high: "high", medium: "medium", low: "low" } as Record<string, string>)[String(severity).toLowerCase()] ?? "muted";
 }
 
 export function formatDateTime(value: string | null | undefined): string {
