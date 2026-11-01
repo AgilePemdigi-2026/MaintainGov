@@ -47,6 +47,10 @@ jobs:
           DB_DATABASE: maintaingov_test
           DB_USERNAME: root
           DB_PASSWORD: ''
+          # Pesan validasi test harus Bahasa Indonesia (fix isu locale CI);
+          # .env.example masih 'en' — job ini secara eksplisit memaksa 'id'.
+          APP_LOCALE: id
+          APP_FALLBACK_LOCALE: id
 
   contracts:
     name: Runtime contracts and human-label evaluator
