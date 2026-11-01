@@ -1,0 +1,11 @@
+{
+  "success": false,
+  "message": "GitHub repository was not found or is not accessible.",
+  "error": {
+    "code": "GITHUB_REPOSITORY_NOT_FOUND",
+    "message": "GitHub repository was not found or is not accessible."
+  },
+  "data": {
+    "status": "not_found"
+  }
+}

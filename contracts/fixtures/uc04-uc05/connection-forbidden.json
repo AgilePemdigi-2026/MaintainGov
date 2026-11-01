@@ -1,0 +1,11 @@
+{
+  "success": false,
+  "message": "GitHub access was denied.",
+  "error": {
+    "code": "GITHUB_FORBIDDEN",
+    "message": "GitHub access was denied."
+  },
+  "data": {
+    "status": "forbidden"
+  }
+}

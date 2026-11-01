@@ -1,0 +1,34 @@
+{
+  "success": true,
+  "message": "Mock response. Issue tidak benar-benar diubah di database atau GitHub.",
+  "data": {
+    "issue_id": 101,
+    "backlog_id": 501,
+    "title": "Perbaikan gagal login setelah pembaruan",
+    "summary": "Pengguna tidak dapat masuk setelah pembaruan terakhir dan menerima pesan kesalahan umum.",
+    "priority": "High",
+    "severity": "High",
+    "module": "Autentikasi",
+    "status": "Sedang Dikerjakan",
+    "assigned_to": {
+      "user_id": 1,
+      "nama": "Developer Mock",
+      "github_login": null
+    },
+    "assigned_at": "2026-11-01T08:30:00+00:00",
+    "source_branch": null,
+    "push_status": "not_detected",
+    "last_push": null,
+    "repository": {
+      "owner": "AgilePemdigi-2026",
+      "name": "MaintainGov",
+      "full_name": "AgilePemdigi-2026/MaintainGov"
+    },
+    "is_mock": true
+  },
+  "meta": {
+    "is_mock": true,
+    "mock_source": "uc04-uc05-fixtures",
+    "note": "Data mock deterministik. Tidak ada perubahan pada database atau GitHub."
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "success": true,
+  "data": [],
+  "meta": {
+    "is_mock": true,
+    "mock_source": "uc04-uc05-fixtures",
+    "note": "Data mock deterministik. Tidak ada perubahan pada database atau GitHub.",
+    "issue_id": 101,
+    "total": 0
+  }
+}

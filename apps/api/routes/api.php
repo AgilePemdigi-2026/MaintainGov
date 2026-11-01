@@ -40,4 +40,7 @@ Route::prefix('v1')->group(function () {
             return response()->json(['success' => true, 'message' => 'Dashboard Developer.']);
         });
     });
+
+    // GitHub connection check and UC04-UC05 contract stubs.
+    require __DIR__.'/github.php';
 });

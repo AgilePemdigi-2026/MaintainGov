@@ -1,0 +1,16 @@
+{
+  "success": true,
+  "data": {
+    "issue_id": 101,
+    "status": "not_detected",
+    "branch": null,
+    "last_push": null,
+    "is_mock": true,
+    "note": "Push dilakukan di luar MaintainGov. API ini hanya membaca status mock dan tidak melakukan operasi tulis."
+  },
+  "meta": {
+    "is_mock": true,
+    "mock_source": "uc04-uc05-fixtures",
+    "note": "Data mock deterministik. Tidak ada perubahan pada database atau GitHub."
+  }
+}

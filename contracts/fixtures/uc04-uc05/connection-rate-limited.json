@@ -1,0 +1,12 @@
+{
+  "success": false,
+  "message": "GitHub rate limit was reached.",
+  "error": {
+    "code": "GITHUB_RATE_LIMITED",
+    "message": "GitHub rate limit was reached.",
+    "retry_after_seconds": 60
+  },
+  "data": {
+    "status": "rate_limited"
+  }
+}

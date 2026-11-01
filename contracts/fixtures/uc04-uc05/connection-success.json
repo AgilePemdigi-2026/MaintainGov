@@ -1,0 +1,16 @@
+{
+  "success": true,
+  "data": {
+    "status": "connected",
+    "repository": {
+      "owner": "AgilePemdigi-2026",
+      "name": "MaintainGov",
+      "full_name": "AgilePemdigi-2026/MaintainGov",
+      "default_branch": "main",
+      "html_url": "https://github.com/AgilePemdigi-2026/MaintainGov",
+      "private": false,
+      "permissions": null
+    },
+    "checked_at": "2026-11-01T12:33:20+00:00"
+  }
+}

@@ -8,6 +8,31 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | GitHub integration (server-side, read-only connection check)
+    |--------------------------------------------------------------------------
+    |
+    | The token is only read by Laravel. It must never be sent to the browser,
+    | committed to the repository, or included in API responses/logs. GitHub
+    | App JWT exchange is intentionally not implemented until the team has
+    | verified App credentials and permissions (see docs/GITHUB_INTEGRATION.md).
+    |
+    */
+    'github' => [
+        'api_url' => env('GITHUB_API_URL', 'https://api.github.com'),
+        'owner' => env('GITHUB_REPOSITORY_OWNER', 'AgilePemdigi-2026'),
+        'repository' => env('GITHUB_REPOSITORY_NAME', 'MaintainGov'),
+        'token' => env('GITHUB_TOKEN'),
+        'timeout' => (int) env('GITHUB_TIMEOUT', 10),
+        'connect_timeout' => (int) env('GITHUB_CONNECT_TIMEOUT', 5),
+        // Mock UC04-UC05 routes are hidden outside local/testing by default.
+        'mock_enabled' => filter_var(
+            env('GITHUB_MOCK_ENABLED', in_array(env('APP_ENV', 'production'), ['local', 'testing'], true)),
+            FILTER_VALIDATE_BOOL,
+        ),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Third Party Services
     |--------------------------------------------------------------------------
     |
