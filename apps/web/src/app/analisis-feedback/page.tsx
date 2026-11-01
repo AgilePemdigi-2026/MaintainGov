@@ -7,6 +7,15 @@ import { ApiError, apiFetch } from "@/lib/api";
 import type { AuthUser } from "@/lib/types";
 import type { BatchStatus } from "@/lib/analysis-types";
 import AnalysisResults from "@/components/analysis-results";
+import { ShieldCheckIcon } from "@/components/icons";
+
+// Hanya menu yang halamannya sudah ada; menu Sprint 2 ditambahkan saat halamannya tersedia.
+const menuItems = [
+  { label: "Analisis Feedback", href: "/analisis-feedback", icon: "▤" },
+  { label: "Maintenance Backlog", href: "/maintenance-backlog", icon: "☷" },
+];
+
+const MAX_CSV_BYTES = 10_000_000;
 
 export default function AnalisisFeedbackPage() {
   const router = useRouter();
@@ -64,6 +73,14 @@ export default function AnalisisFeedbackPage() {
     setError(e instanceof Error ? e.message : fallback);
   }
 
+  function selectFile(selected: File | null) {
+    requestKey.current = ""; setError(""); setFile(null);
+    if (!selected) return;
+    if (!selected.name.toLowerCase().endsWith(".csv")) { setError("Pilih file CSV."); return; }
+    if (selected.size > MAX_CSV_BYTES) { setError("Maksimum ukuran CSV adalah 10 MB (10.000.000 byte)."); return; }
+    setFile(selected);
+  }
+
   async function upload(e: FormEvent) {
     e.preventDefault();
     if (!file || submitting.current || batch?.status === "Diproses") return;
@@ -103,36 +120,130 @@ export default function AnalisisFeedbackPage() {
   }
 
   if (!user) return <main style={{ padding: 32 }}>Memeriksa sesi...</main>;
-  return <main style={{ maxWidth: 1100, margin: "auto", padding: 24, lineHeight: 1.6 }}>
-    <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
-      <div><p>MaintainGov · {user.nama}</p><h1>Analisis Feedback</h1></div>
-      <button disabled={busy} onClick={logout}>Keluar</button>
-    </header>
-    <p>Unggah CSV UTF-8 berisi kolom <strong>reviewId, Review Teks, rating, date</strong>. Format tanggal: YYYY-MM-DD HH:MM:SS. Maksimum 10 MB (10.000.000 byte) dan 10.000 ulasan.</p>
-    <form onSubmit={upload} style={{ padding: 24, background: "#eef4fa", borderRadius: 12 }}>
-      <label htmlFor="feedback-file">Dataset feedback CSV </label>
-      <input id="feedback-file" type="file" accept=".csv" disabled={busy || batch?.status === "Diproses"} onChange={e => {
-        const selected = e.target.files?.[0] ?? null;
-        requestKey.current = ""; setError(""); setFile(null);
-        if (!selected) return;
-        if (!selected.name.toLowerCase().endsWith(".csv")) { setError("Pilih file CSV."); return; }
-        if (selected.size > 10000000) { setError("Maksimum ukuran CSV adalah 10 MB (10.000.000 byte)."); return; }
-        setFile(selected);
-      }} />
-      <button type="submit" disabled={!file || busy || batch?.status === "Diproses"}>{busy ? "Mengirim..." : "Analisis feedback"}</button>
-    </form>
-    {error && <p role="alert" style={{ color: "#b42318" }}>{error}</p>}
-    {pollError && <p role="alert">{pollError} {pollAttempt < 5 ? "Status akan dicoba kembali jika gangguan bersifat sementara." : "Pembaruan otomatis dijeda."} <button onClick={() => setRefresh(value => value + 1)}>Cek status sekarang</button></p>}
-    {batch && <section aria-live="polite" style={{ marginTop: 24 }}>
-      <h2>Batch #{batch.batch_id} · {batch.status}</h2>
-      <p>{batch.review_count} ulasan · Percobaan {batch.attempt}</p>
-      {batch.status === "Diproses" && <p>Analisis sedang diproses. Status diperbarui otomatis. Jika proses terhenti, hubungi tim untuk memeriksa worker.</p>}
-      {batch.status === "Gagal" && <><p role="alert">{batch.error}</p><button disabled={busy} onClick={retry}>Coba ulang analisis</button></>}
-      {batch.status === "Selesai" && <>
-        <p role="status">Feedback berhasil diproses. {batch.case_count === 0 ? "Tidak ada kandidat case yang teridentifikasi." : batch.case_count + " kandidat case Pending terbentuk."}</p>
-        <p>Versi analisis: {batch.analysis_version}</p>
-        <AnalysisResults key={batch.batch_id} batchId={batch.batch_id} />
-      </>}
-    </section>}
-  </main>;
+
+  const processing = batch?.status === "Diproses";
+
+  return (
+    <main className="analysis-page">
+      <header className="analysis-header">
+        <div className="analysis-brand">
+          <span className="analysis-brand__logo"><ShieldCheckIcon size={20} /></span>
+          <span>MaintainGov</span>
+        </div>
+        <div className="analysis-header__right">
+          <span className="analysis-user">{user.nama}</span>
+          <button className="analysis-logout" disabled={busy} onClick={logout}>
+            Keluar<span aria-hidden="true"> ↗</span>
+          </button>
+        </div>
+      </header>
+
+      <div className="analysis-layout">
+        <aside className="analysis-sidebar">
+          <p className="analysis-sidebar__label">MENU UTAMA</p>
+          {menuItems.map(item => (
+            <a key={item.label} href={item.href} className={item.label === "Analisis Feedback" ? "active" : undefined}
+              aria-current={item.label === "Analisis Feedback" ? "page" : undefined}>
+              <span className="analysis-menu-icon" aria-hidden="true">{item.icon}</span>
+              {item.label}
+            </a>
+          ))}
+          <div className="analysis-sidebar__footer">
+            <span className="analysis-avatar" aria-hidden="true">{user.nama?.charAt(0)?.toUpperCase() || "A"}</span>
+            <div>
+              <strong>{user.nama}</strong>
+              <small>{user.role}</small>
+            </div>
+          </div>
+        </aside>
+
+        <section className="analysis-content">
+          <div className="analysis-heading-row">
+            <div>
+              <p className="analysis-eyebrow">MAINTENANCE MANAGEMENT</p>
+              <h1 className="analysis-title">Analisis Feedback</h1>
+              <p className="analysis-description">
+                Unggah dataset ulasan untuk mengidentifikasi masalah dan membantu tim menentukan prioritas maintenance.
+              </p>
+            </div>
+          </div>
+
+          <section className="analysis-card">
+            <div className="analysis-card__heading">
+              <div className="analysis-card__icon" aria-hidden="true">↑</div>
+              <div>
+                <h2>Unggah Dataset</h2>
+                <p>Pilih file CSV untuk memulai analisis feedback.</p>
+              </div>
+            </div>
+
+            <form onSubmit={upload}>
+              <div className="analysis-dropzone">
+                <span className="analysis-file-icon" aria-hidden="true">⇧</span>
+                <label htmlFor="feedback-file"><strong>Dataset feedback CSV</strong></label>
+                <span>{file ? `${file.name} · ${(file.size / 1024).toFixed(1)} KB` : "Pilih file dari perangkat kamu"}</span>
+                <small>Format CSV UTF-8 · Maksimum 10 MB (10.000.000 byte) · 10.000 ulasan</small>
+                <input id="feedback-file" type="file" accept=".csv" disabled={busy || processing}
+                  onChange={e => selectFile(e.target.files?.[0] ?? null)} />
+              </div>
+
+              <p className="analysis-format-note">
+                Kolom wajib: <strong>reviewId, Review Teks, rating, date</strong>. Format tanggal: YYYY-MM-DD HH:MM:SS.
+              </p>
+
+              <button className="analysis-primary-button" type="submit" disabled={!file || busy || processing}>
+                {busy ? "Mengirim..." : "Analisis feedback"}
+              </button>
+            </form>
+          </section>
+
+          {error && <p className="analysis-error" role="alert">{error}</p>}
+          {pollError && (
+            <p className="analysis-error" role="alert">
+              {pollError}{" "}
+              {pollAttempt < 5 ? "Status akan dicoba kembali jika gangguan bersifat sementara." : "Pembaruan otomatis dijeda."}{" "}
+              <button type="button" className="analysis-logout" onClick={() => setRefresh(value => value + 1)}>Cek status sekarang</button>
+            </p>
+          )}
+
+          {batch && (
+            <section className="analysis-card" aria-live="polite">
+              <div className="analysis-card__heading">
+                <div className="analysis-card__icon" aria-hidden="true">▤</div>
+                <div>
+                  <h2>Batch #{batch.batch_id} · {batch.status}</h2>
+                  <p>{batch.review_count} ulasan · Percobaan {batch.attempt}</p>
+                </div>
+                <span className="analysis-status">{batch.status}</span>
+              </div>
+
+              {processing && (
+                <p>Analisis sedang diproses. Status diperbarui otomatis. Jika proses terhenti, hubungi tim untuk memeriksa worker.</p>
+              )}
+
+              {batch.status === "Gagal" && (
+                <div>
+                  <p className="analysis-error" role="alert">{batch.error}</p>
+                  <button className="analysis-primary-button" disabled={busy} onClick={retry}>Coba ulang analisis</button>
+                </div>
+              )}
+
+              {batch.status === "Selesai" && (
+                <>
+                  <p role="status" className="analysis-description">
+                    Feedback berhasil diproses.{" "}
+                    {batch.case_count === 0
+                      ? "Tidak ada kandidat case yang teridentifikasi."
+                      : batch.case_count + " kandidat case Pending terbentuk."}
+                  </p>
+                  <p className="analysis-format-note">Versi analisis: {batch.analysis_version}</p>
+                  <AnalysisResults key={batch.batch_id} batchId={batch.batch_id} />
+                </>
+              )}
+            </section>
+          )}
+        </section>
+      </div>
+    </main>
+  );
 }
