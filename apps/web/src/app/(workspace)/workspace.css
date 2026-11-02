@@ -141,6 +141,16 @@
 .ws-prio__fill--critical { background: #7a1010; } .ws-prio__fill--high { background: #c0262d; }
 .ws-prio__fill--medium { background: #d0661a; } .ws-prio__fill--low { background: #1f8a4c; }
 
+/* ---------- Progress ---------- */
+.ws-progress { display: flex; flex-direction: column; gap: 8px; }
+.ws-progress__head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; font-size: 13px; font-weight: 600; color: var(--ws-body); }
+.ws-progress__value { font-size: 12px; font-weight: 500; color: var(--ws-muted); font-variant-numeric: tabular-nums; }
+.ws-progress__track { position: relative; height: 8px; border-radius: 999px; background: #e6ebf5; overflow: hidden; }
+.ws-progress__bar { display: block; height: 100%; border-radius: inherit; background: var(--ws-blue); transition: width 0.35s ease; }
+.ws-progress__bar--done { width: 100%; background: var(--ws-green); }
+.ws-progress__bar--error { width: 100%; background: var(--ws-red); }
+.ws-progress__hint { margin: 0; font-size: 12px; color: var(--ws-muted); }
+
 /* ---------- Buttons ---------- */
 .ws-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 38px; padding: 0 16px; border-radius: 6px; font: inherit; font-weight: 600; cursor: pointer; text-decoration: none; white-space: nowrap; }
 .ws-btn:disabled, .ws-btn[aria-disabled="true"] { opacity: 0.55; cursor: not-allowed; }

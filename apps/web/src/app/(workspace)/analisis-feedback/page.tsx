@@ -22,6 +22,7 @@ export default function AnalisisFeedbackPage() {
   const [pollError, setPollError] = useState("");
   const [pollAttempt, setPollAttempt] = useState(0);
   const [refresh, setRefresh] = useState(0);
+  const [progress, setProgress] = useState(0);
   const requestKey = useRef("");
   const submitting = useRef(false);
 
@@ -62,12 +63,27 @@ export default function AnalisisFeedbackPage() {
     return () => { active = false; clearTimeout(timer); controller.abort(); };
   }, [batchId, user.role, router, refresh]);
 
+  // Progres ini murni tampilan frontend: backend hanya mengirim status batch,
+  // jadi bar bergerak bertahap sampai 92% lalu menjadi 100% saat status selesai.
+  const progressActive = busy || batch?.status === "Diproses";
+  useEffect(() => {
+    if (!progressActive) {
+      setProgress(batch?.status === "Selesai" || batch?.status === "Gagal" ? 100 : 0);
+      return;
+    }
+    setProgress(current => (current < 5 ? 5 : current));
+    const timer = setInterval(() => {
+      setProgress(current => (current >= 92 ? 92 : Math.min(92, current + Math.max(0.8, (92 - current) * 0.07))));
+    }, 400);
+    return () => clearInterval(timer);
+  }, [progressActive, batch?.status]);
+
   function showError(e: unknown, fallback: string) {
     setError(handleError(e, fallback));
   }
 
   function selectFile(selected: File | null) {
-    requestKey.current = ""; setError(""); setFile(null);
+    requestKey.current = ""; setError(""); setFile(null); setProgress(0);
     if (!selected) return;
     if (!selected.name.toLowerCase().endsWith(".csv")) { setError("Pilih file CSV."); return; }
     if (selected.size > MAX_CSV_BYTES) { setError("Maksimum ukuran CSV adalah 10 MB (10.000.000 byte)."); return; }
@@ -77,7 +93,7 @@ export default function AnalisisFeedbackPage() {
   async function upload(e: FormEvent) {
     e.preventDefault();
     if (!file || submitting.current || batch?.status === "Diproses") return;
-    submitting.current = true; setBusy(true); setError("");
+    submitting.current = true; setBusy(true); setError(""); setProgress(0);
     try {
       const form = new FormData(); form.append("file", file);
       if (!requestKey.current) requestKey.current = crypto.randomUUID();
@@ -95,7 +111,7 @@ export default function AnalisisFeedbackPage() {
 
   async function retry() {
     if (submitting.current) return;
-    submitting.current = true; setBusy(true); setError("");
+    submitting.current = true; setBusy(true); setError(""); setProgress(0);
     try {
       await apiFetch("/analysis-batches/" + batchId + "/retry", { method: "POST" });
       setBatch(value => value ? { ...value, status: "Diproses", error: null, attempt: value.attempt + 1 } : null);
@@ -148,6 +164,24 @@ export default function AnalisisFeedbackPage() {
         </div>
       </section>
 
+      {busy && !batch && (
+        <section className="ws-card" role="status" aria-live="polite" aria-label="Mengunggah dataset">
+          <div className="ws-card__body">
+            <div className="ws-progress">
+              <div className="ws-progress__head">
+                <span>Mengunggah dataset...</span>
+                {file && <span className="ws-progress__value">{Math.round(progress)}% · {file.name}</span>}
+              </div>
+              <div className="ws-progress__track" role="progressbar" aria-label="Mengunggah dataset"
+                aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progress)}>
+                <span className="ws-progress__bar" style={{ width: `${progress}%` }} />
+              </div>
+              <p className="ws-progress__hint">File sedang dikirim dan divalidasi. Jangan tutup halaman ini.</p>
+            </div>
+          </div>
+        </section>
+      )}
+
       {error && <p className="analysis-error" role="alert">{error}</p>}
       {pollError && (
         <p className="analysis-error" role="alert">
@@ -167,9 +201,37 @@ export default function AnalisisFeedbackPage() {
             <span className={`ws-pill ws-pill--${statusTone}`}>{batch.status}</span>
           </div>
           <div className="ws-card__body">
-            {processing && (
-              <p>Analisis sedang diproses. Status diperbarui otomatis. Jika proses terhenti, hubungi tim untuk memeriksa worker.</p>
-            )}
+            <div className={`ws-progress ws-progress--${batch.status === "Selesai" ? "done" : batch.status === "Gagal" ? "error" : "active"}`}>
+              <div className="ws-progress__head">
+                <span>
+                  {processing
+                    ? "Menganalisis feedback..."
+                    : batch.status === "Selesai"
+                      ? "Analisis selesai"
+                      : "Analisis gagal"}
+                </span>
+                <span className="ws-progress__value">
+                  {processing ? `${Math.round(progress)}% · ${batch.review_count} ulasan` : batch.status === "Selesai" ? "100%" : "Gagal"}
+                </span>
+              </div>
+              <div
+                className="ws-progress__track"
+                role="progressbar"
+                aria-label="Progres analisis feedback"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={processing ? Math.round(progress) : 100}
+                aria-valuetext={processing ? `${Math.round(progress)}%` : batch.status === "Selesai" ? "Selesai" : "Gagal"}
+              >
+                <span
+                  className={`ws-progress__bar${processing ? "" : batch.status === "Selesai" ? " ws-progress__bar--done" : " ws-progress__bar--error"}`}
+                  style={processing ? { width: `${progress}%` } : undefined}
+                />
+              </div>
+              {processing && (
+                <p className="ws-progress__hint">Progres perkiraan selama analisis berjalan. Status diperbarui otomatis setiap 2 detik.</p>
+              )}
+            </div>
 
             {batch.status === "Gagal" && (
               <div>
