@@ -4,12 +4,14 @@ use App\Http\Middleware\EnsureGitHubMockEnabled;
 use App\Http\Middleware\RoleMiddleware;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Http\Request;
 use Illuminate\Session\Middleware\StartSession;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -33,6 +35,47 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
-            fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
+            fn (Request $request) => $request->is('api/*')
+                || str_contains((string) $request->header('Accept', ''), 'application/json'),
         );
+
+        // SRS 3.4.5: envelope JSON Bahasa Indonesia hanya untuk client yang
+        // berkomunikasi JSON; pesan teknis (SQL, stack) tidak pernah bocor.
+        $wantsJsonEnvelope = fn (Request $request): bool =>
+            str_contains((string) $request->header('Accept', ''), 'application/json')
+            || (bool) $request->expectsJson();
+
+        // Route tidak ditemukan (mis. typo path /maintenance-backlogs dengan
+        // tambahan 's'). Laravel 13 router melempar NotFoundHttpException
+        // dengan pola pesan "The route ... could not be found." — diganti
+        // envelope Bahasa Indonesia. Pesan kustom dari kode (mis.
+        // abort_unless(..., 404, '...')) dipertahankan apa adanya.
+        $exceptions->render(function (NotFoundHttpException $e, Request $request) use ($wantsJsonEnvelope) {
+            if (! $wantsJsonEnvelope($request)) {
+                return null; // serahkan ke renderer bawaan
+            }
+
+            $message = $e->getMessage();
+            $fromRouter = $message === ''
+                || (str_starts_with($message, 'The route ') && str_ends_with($message, ' could not be found.'));
+            if (! $fromRouter) {
+                return null; // pesan kustom: biarkan renderer default (translated via shouldRenderJsonWhen)
+            }
+
+            return response()->json([
+                'success' => false, 'message' => 'Endpoint tidak ditemukan.', 'data' => null,
+            ], 404);
+        });
+
+        // Kesalahan database (SQLSTATE) yang lolos dari handler controller:
+        // pesan teknis tidak pernah dikirim ke client.
+        $exceptions->render(function (QueryException $e, Request $request) use ($wantsJsonEnvelope) {
+            if (! $wantsJsonEnvelope($request)) {
+                return null; // serahkan ke renderer bawaan
+            }
+
+            return response()->json([
+                'success' => false, 'message' => 'Terjadi kesalahan pada database.', 'data' => null,
+            ], 500);
+        });
     })->create();
