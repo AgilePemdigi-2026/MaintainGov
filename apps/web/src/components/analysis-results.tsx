@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { CSSProperties, ReactNode } from "react";
+import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { ApiError, apiFetch } from "@/lib/api";
 import type {
@@ -11,14 +11,8 @@ import type {
   Page,
 } from "@/lib/analysis-types";
 
-const colors = {
-  High: { background: "#FEE2E2", color: "#B91C1C" },
-  Medium: { background: "#FFEDD5", color: "#C2410C" },
-  Low: { background: "#DCFCE7", color: "#15803D" },
-  Default: { background: "#F1F5F9", color: "#475569" },
-};
-
-type Severity = keyof typeof colors;
+// Gaya ada di globals.css (kelas ar-*), sama dengan halaman dalam lainnya.
+type Severity = "High" | "Medium" | "Low" | "Default";
 
 function getSeverity(value?: string | null): Severity {
   const normalized = value?.trim().toLowerCase();
@@ -32,22 +26,9 @@ function getSeverity(value?: string | null): Severity {
 
 function SeverityBadge({ value }: { value?: string | null }) {
   const severity = getSeverity(value);
-  const style = colors[severity];
 
   return (
-    <span
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        padding: "5px 10px",
-        borderRadius: 999,
-        fontSize: 12,
-        fontWeight: 700,
-        background: style.background,
-        color: style.color,
-        whiteSpace: "nowrap",
-      }}
-    >
+    <span className={`ar-badge ar-badge--${severity.toLowerCase()}`}>
       {severity === "Default" ? value || "Tidak ditentukan" : severity}
     </span>
   );
@@ -57,98 +38,27 @@ function SentimentBadge({ value }: { value?: string | null }) {
   const sentiment = String(value ?? "").trim();
   const normalized = sentiment.toLowerCase();
 
-  const isPositive =
-    normalized.includes("positive") || normalized.includes("positif");
-  const isNegative =
-    normalized.includes("negative") || normalized.includes("negatif");
-
-  const style = isPositive
-    ? { background: "#DCFCE7", color: "#15803D" }
-    : isNegative
-      ? { background: "#FEE2E2", color: "#B91C1C" }
-      : { background: "#F1F5F9", color: "#475569" };
+  const tone =
+    normalized.includes("positive") || normalized.includes("positif")
+      ? "positive"
+      : normalized.includes("negative") || normalized.includes("negatif")
+        ? "negative"
+        : "default";
 
   return (
-    <span
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        padding: "5px 10px",
-        borderRadius: 999,
-        fontSize: 12,
-        fontWeight: 700,
-        background: style.background,
-        color: style.color,
-        whiteSpace: "nowrap",
-      }}
-    >
+    <span className={`ar-badge ar-badge--${tone}`}>
       {sentiment || "Belum tersedia"}
-    </span>
-  );
-}
-
-function PriorityBadge({ score }: { score: number | string }) {
-  const value = Number(score);
-  const severity: Exclude<Severity, "Default"> =
-    value >= 7 ? "High" : value >= 4 ? "Medium" : "Low";
-  const style = colors[severity];
-
-  return (
-    <span
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        padding: "5px 10px",
-        borderRadius: 999,
-        background: style.background,
-        color: style.color,
-        fontSize: 12,
-        fontWeight: 700,
-        whiteSpace: "nowrap",
-      }}
-    >
-      {Number.isFinite(value) ? `${value.toFixed(2)}/10` : "—"}
     </span>
   );
 }
 
 function SectionCard({ children, labelledBy, busy }: { children: ReactNode; labelledBy: string; busy: boolean }) {
   return (
-    <section
-      aria-labelledby={labelledBy}
-      aria-busy={busy}
-      style={{
-        background: "#FFFFFF",
-        border: "1px solid #E2E8F0",
-        borderRadius: 16,
-        padding: 24,
-        marginBottom: 24,
-        boxShadow: "0 2px 8px rgba(15, 23, 42, 0.03)",
-      }}
-    >
+    <section aria-labelledby={labelledBy} aria-busy={busy} className="ar-section">
       {children}
     </section>
   );
 }
-
-const buttonStyle: CSSProperties = {
-  padding: "9px 14px",
-  border: "1px solid #CBD5E1",
-  borderRadius: 8,
-  background: "#FFFFFF",
-  color: "#334155",
-  fontSize: 13,
-  fontWeight: 600,
-  cursor: "pointer",
-};
-
-const cellStyle: CSSProperties = {
-  padding: 12,
-  verticalAlign: "top",
-  borderBottom: "1px solid #E2E8F0",
-  color: "#475569",
-  lineHeight: 1.6,
-};
 
 function Pager({
   page,
@@ -160,38 +70,26 @@ function Pager({
   onPage: (value: number) => void;
 }) {
   return (
-    <nav
-      aria-label="Halaman hasil"
-      style={{
-        display: "flex",
-        flexWrap: "wrap",
-        gap: 12,
-        alignItems: "center",
-        justifyContent: "space-between",
-        marginTop: 20,
-        color: "#64748B",
-        fontSize: 13,
-      }}
-    >
+    <nav aria-label="Halaman hasil" className="ar-pager">
       <span>
         Halaman {page.current_page} dari {page.last_page} · {page.total} data
       </span>
 
-      <div style={{ display: "flex", gap: 8 }}>
+      <div className="ar-pager__nav">
         <button
           type="button"
+          className="ar-btn"
           disabled={loading || page.current_page <= 1}
           onClick={() => onPage(page.current_page - 1)}
-          style={buttonStyle}
         >
           Sebelumnya
         </button>
 
         <button
           type="button"
+          className="ar-btn"
           disabled={loading || page.current_page >= page.last_page}
           onClick={() => onPage(page.current_page + 1)}
-          style={buttonStyle}
         >
           Berikutnya
         </button>
@@ -269,23 +167,13 @@ function SourceReviews({
   );
 
   return (
-    <div
-      aria-busy={source.loading}
-      style={{
-        marginTop: 16,
-        padding: 16,
-        background: "#F8FAFC",
-        borderRadius: 10,
-      }}
-    >
-      <h4 style={{ marginTop: 0, color: "#334155" }}>
-        Ulasan pembentuk case
-      </h4>
+    <div aria-busy={source.loading} className="ar-source">
+      <h4 className="ar-source__title">Ulasan pembentuk case</h4>
 
       {source.error && (
         <p role="alert">
           {source.error}{" "}
-          <button type="button" onClick={source.retry} style={buttonStyle}>
+          <button type="button" onClick={source.retry} className="ar-btn">
             Muat ulang ulasan
           </button>
         </p>
@@ -300,9 +188,9 @@ function SourceReviews({
             {source.result.data.length === 0 ? (
               <p>Tidak ada ulasan pada halaman ini.</p>
             ) : (
-              <ul style={{ paddingLeft: 20, lineHeight: 1.7 }}>
+              <ul className="ar-source__list">
                 {source.result.data.map((review) => (
-                  <li key={review.review_id} style={{ marginBottom: 8 }}>
+                  <li key={review.review_id}>
                     <strong>{review.source_review_id}:</strong>{" "}
                     {review.teks_ulasan}
                   </li>
@@ -330,119 +218,57 @@ function CaseCard({
   batchId: number;
 }) {
   const [open, setOpen] = useState(false);
+  const score = Number(item.priority_score);
+  const scoreTone = score >= 7 ? "high" : score >= 4 ? "medium" : "low";
+  const scorePct = Number.isFinite(score) ? Math.max(0, Math.min(100, score * 10)) : 0;
 
   return (
-    <article
-      style={{
-        border: "1px solid #E2E8F0",
-        borderRadius: 14,
-        padding: 20,
-        marginBottom: 14,
-        background: "#FFFFFF",
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          flexWrap: "wrap",
-          justifyContent: "space-between",
-          alignItems: "flex-start",
-          gap: 12,
-        }}
-      >
-        <div style={{ flex: 1, minWidth: 180 }}>
-          <p
-            style={{
-              margin: "0 0 8px",
-              fontSize: 12,
-              fontWeight: 700,
-              color: "#64748B",
-            }}
-          >
-            MAINTENANCE CASE #{item.case_id}
-          </p>
-
-          <h3
-            style={{
-              margin: "0 0 12px",
-              fontSize: 17,
-              lineHeight: 1.5,
-              color: "#0F172A",
-            }}
-          >
-            {item.judul_issue}
-          </h3>
-        </div>
-
-        <span
-          style={{
-            padding: "5px 10px",
-            borderRadius: 999,
-            background: "#F1F5F9",
-            color: "#475569",
-            fontSize: 12,
-            fontWeight: 700,
-          }}
-        >
-          {item.status_validasi}
-        </span>
-      </div>
-
-      <div
-        style={{
-          display: "flex",
-          flexWrap: "wrap",
-          alignItems: "center",
-          gap: 8,
-          marginBottom: 16,
-        }}
-      >
+    <article className="ar-case">
+      <div className="ar-case__top">
+        <p className="ar-case__id">MAINTENANCE CASE #{item.case_id}</p>
         <SeverityBadge value={item.severity} />
-        <PriorityBadge score={item.priority_score} />
+      </div>
 
-        <span
-          style={{
-            padding: "5px 10px",
-            borderRadius: 999,
-            background: "#EFF6FF",
-            color: "#1D4ED8",
-            fontSize: 12,
-            fontWeight: 600,
-          }}
-        >
-          {item.kategori}
+      <h3 className="ar-case__title">{item.judul_issue}</h3>
+
+      <div className="ar-case__tags">
+        <span className="ar-badge ar-badge--pending">{item.status_validasi}</span>
+        <span className="ar-badge ar-badge--default">{item.kategori}</span>
+      </div>
+
+      <div className={`ar-score ar-score--${scoreTone}`}>
+        <span className="ar-score__label">Skor prioritas</span>
+        <span className="ar-score__value">
+          {Number.isFinite(score) ? score.toFixed(2) : "—"}<small>/10</small>
+        </span>
+        <span className="ar-score__track" aria-hidden="true">
+          <span className="ar-score__fill" style={{ width: `${scorePct}%` }} />
         </span>
       </div>
 
-      <div style={{ color: "#475569", fontSize: 14, lineHeight: 1.7 }}>
-        <p style={{ margin: "0 0 8px" }}>
-          <strong style={{ color: "#334155" }}>Modul:</strong> {item.modul}
-          {" · "}
-          <strong style={{ color: "#334155" }}>Fitur:</strong> {item.fitur}
+      <p className="ar-case__meta">
+        <strong>Modul:</strong> {item.modul}
+        {" · "}
+        <strong>Fitur:</strong> {item.fitur}
+      </p>
+
+      <div>
+        <p className="ar-case__label">Ringkasan masalah</p>
+        <p className="ar-case__text">{item.ringkasan_masalah}</p>
+      </div>
+
+      <div>
+        <p className="ar-case__label">Saran penanganan</p>
+        <p className="ar-case__text">
+          {item.recommendation || "Perlu review tim maintenance."}
         </p>
-
-        <p style={{ margin: "0 0 12px" }}>{item.ringkasan_masalah}</p>
-
-        <div
-          style={{
-            padding: 14,
-            background: "#F8FAFC",
-            borderRadius: 10,
-            borderLeft: "3px solid #64748B",
-          }}
-        >
-          <strong style={{ color: "#334155" }}>Saran penanganan</strong>
-          <p style={{ margin: "5px 0 0" }}>
-            {item.recommendation || "Perlu review tim maintenance."}
-          </p>
-        </div>
       </div>
 
       <button
         type="button"
         aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
-        style={{ ...buttonStyle, marginTop: 16 }}
+        className="ar-case__toggle"
       >
         {open ? "Tutup ulasan asal" : "Lihat ulasan pembentuk case"}
         <span aria-hidden="true">{open ? " ↑" : " ↓"}</span>
@@ -496,21 +322,10 @@ export default function AnalysisResults({
   });
 
   return (
-    <div style={{ marginTop: 28 }}>
-      <div
-        style={{
-          padding: 18,
-          marginBottom: 24,
-          borderRadius: 12,
-          background: "#EFF6FF",
-          border: "1px solid #DBEAFE",
-          color: "#1E40AF",
-          fontSize: 14,
-          lineHeight: 1.7,
-        }}
-      >
+    <div className="ar">
+      <div className="ar-notice">
         <strong>Analisis berhasil disimpan.</strong>
-        <p style={{ margin: "4px 0 0" }}>
+        <p>
           Kandidat case berstatus Pending menunggu validasi tim maintenance.
           Sentimen menggunakan model dengan target proksi rating, sedangkan
           aturan domain masih memerlukan persetujuan review.
@@ -518,48 +333,32 @@ export default function AnalysisResults({
       </div>
 
       <SectionCard labelledBy="case-heading" busy={cases.loading}>
-        <div style={{ marginBottom: 20 }}>
-          <h2
-            id="case-heading"
-            style={{ margin: "0 0 6px", fontSize: 20, color: "#0F172A" }}
-          >
+        <div className="ar-section__head">
+          <h2 id="case-heading" className="ar-section__title">
             Kandidat Maintenance Case
             {cases.result ? ` (${cases.result.meta.total})` : ""}
           </h2>
 
-          <p style={{ margin: 0, color: "#64748B", fontSize: 13 }}>
+          <p className="ar-section__hint">
             Daftar masalah yang teridentifikasi dari ulasan pengguna.
           </p>
         </div>
 
-        <div
-          style={{
-            display: "flex",
-            flexWrap: "wrap",
-            gap: 12,
-            marginBottom: 20,
-            alignItems: "center",
-          }}
-        >
+        <div className="ar-filters">
           <input
             type="text"
             aria-label="Cari kandidat maintenance case"
             placeholder="Cari judul, modul, atau masalah..."
             value={searchCase}
             onChange={(event) => setSearchCase(event.target.value)}
-            style={{
-              ...buttonStyle,
-              flex: "1 1 220px",
-              minWidth: 180,
-              boxSizing: "border-box",
-            }}
+            className="ar-input"
           />
 
           <select
             aria-label="Filter severity"
             value={severityFilter}
             onChange={(event) => setSeverityFilter(event.target.value)}
-            style={buttonStyle}
+            className="ar-select"
           >
             <option value="Semua">Semua Severity</option>
             <option value="High">High</option>
@@ -571,7 +370,7 @@ export default function AnalysisResults({
             aria-label="Filter status validasi"
             value={statusFilter}
             onChange={(event) => setStatusFilter(event.target.value)}
-            style={buttonStyle}
+            className="ar-select"
           >
             <option value="Semua">Semua Status</option>
             <option value="Pending">Pending</option>
@@ -586,55 +385,50 @@ export default function AnalysisResults({
               setSeverityFilter("Semua");
               setStatusFilter("Semua");
             }}
-            style={buttonStyle}
+            className="ar-link"
           >
             Reset Filter
           </button>
         </div>
 
-        <p
-          aria-live="polite"
-          style={{
-            color: "#64748B",
-            fontSize: 13,
-            margin: "0 0 16px",
-          }}
-        >
+        <p aria-live="polite" className="ar-muted">
           Menampilkan {filteredCases.length} kandidat pada halaman ini.
         </p>
 
         {cases.error && (
-          <p role="alert" style={{ color: "#B91C1C" }}>
+          <p role="alert" className="ar-error">
             {cases.error}{" "}
-            <button type="button" onClick={cases.retry} style={buttonStyle}>
+            <button type="button" onClick={cases.retry} className="ar-btn">
               Muat ulang case
             </button>
           </p>
         )}
 
         {cases.loading ? (
-          <p style={{ color: "#64748B" }}>Memuat case...</p>
+          <p className="ar-muted">Memuat case...</p>
         ) : (
           !cases.error &&
           cases.result && (
             <>
               {cases.result.data.length === 0 ? (
-                <p style={{ color: "#64748B" }}>
+                <p className="ar-muted">
                   Tidak ada kandidat case. Hasil setiap ulasan tetap tersedia.
                 </p>
               ) : filteredCases.length === 0 ? (
-                <p style={{ color: "#64748B" }}>
+                <p className="ar-muted">
                   Tidak ada kandidat case yang sesuai dengan filter. Coba ubah
                   filter atau klik Reset Filter.
                 </p>
               ) : (
-                filteredCases.map((item) => (
-                  <CaseCard
-                    key={item.case_id}
-                    item={item}
-                    batchId={batchId}
-                  />
-                ))
+                <div className="ar-case-grid">
+                  {filteredCases.map((item) => (
+                    <CaseCard
+                      key={item.case_id}
+                      item={item}
+                      batchId={batchId}
+                    />
+                  ))}
+                </div>
               )}
 
               <Pager
@@ -648,159 +442,112 @@ export default function AnalysisResults({
       </SectionCard>
 
       <SectionCard labelledBy="review-heading" busy={reviews.loading}>
-        <div style={{ marginBottom: 20 }}>
-          <h2
-            id="review-heading"
-            style={{ margin: "0 0 6px", fontSize: 20, color: "#0F172A" }}
-          >
+        <div className="ar-section__head">
+          <h2 id="review-heading" className="ar-section__title">
             Hasil per Ulasan
           </h2>
 
-          <p style={{ margin: 0, color: "#64748B", fontSize: 13 }}>
+          <p className="ar-section__hint">
             Rincian sentimen, kategori, severity, dan case untuk setiap ulasan.
           </p>
         </div>
 
         {reviews.error && (
-          <p role="alert" style={{ color: "#B91C1C" }}>
+          <p role="alert" className="ar-error">
             {reviews.error}{" "}
-            <button type="button" onClick={reviews.retry} style={buttonStyle}>
+            <button type="button" onClick={reviews.retry} className="ar-btn">
               Muat ulang hasil
             </button>
           </p>
         )}
 
         {reviews.loading ? (
-          <p style={{ color: "#64748B" }}>Memuat hasil ulasan...</p>
+          <p className="ar-muted">Memuat hasil ulasan...</p>
         ) : (
           !reviews.error &&
           reviews.result && (
             <>
-              <div style={{ overflowX: "auto" }}>
-                <table
-                  style={{
-                    width: "100%",
-                    minWidth: 850,
-                    borderCollapse: "collapse",
-                    textAlign: "left",
-                    fontSize: 13,
-                  }}
-                >
-                  <caption
-                    style={{
-                      textAlign: "left",
-                      padding: "0 0 12px",
-                      color: "#64748B",
-                    }}
-                  >
-                    Halaman {reviews.result.meta.current_page}
-                  </caption>
+              <div className="ar-table-box">
+                <div className="ar-table-scroll">
+                  <table className="ar-table">
+                    <caption>
+                      Halaman {reviews.result.meta.current_page}
+                    </caption>
 
-                  <thead>
-                    <tr style={{ background: "#F8FAFC" }}>
-                      {[
-                        "ID asal",
-                        "Ulasan",
-                        "Sentimen",
-                        "Kategori / Severity",
-                        "Issue / Modul / Fitur",
-                        "Case",
-                      ].map((heading) => (
-                        <th
-                          key={heading}
-                          scope="col"
-                          style={{
-                            padding: 12,
-                            borderBottom: "1px solid #E2E8F0",
-                            color: "#475569",
-                            fontWeight: 700,
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          {heading}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-
-                  <tbody>
-                    {reviews.result.data.map((review) => (
-                      <tr key={review.review_id}>
-                        <td style={cellStyle}>
-                          {review.source_review_id}
-                        </td>
-
-                        <td style={{ ...cellStyle, minWidth: 220 }}>
-                          {review.teks_ulasan}
-                        </td>
-
-                        <td style={cellStyle}>
-                          <div
-                            style={{
-                              display: "flex",
-                              flexDirection: "column",
-                              alignItems: "flex-start",
-                              gap: 6,
-                            }}
-                          >
-                            <SentimentBadge
-                              value={review.analysis_result?.sentimen}
-                            />
-
-                            {review.analysis_result?.needs_manual_review && (
-                              <span
-                                style={{
-                                  color: "#C2410C",
-                                  fontSize: 12,
-                                  fontWeight: 600,
-                                }}
-                              >
-                                Perlu review
-                              </span>
-                            )}
-                          </div>
-                        </td>
-
-                        <td style={cellStyle}>
-                          <div
-                            style={{
-                              display: "flex",
-                              flexDirection: "column",
-                              alignItems: "flex-start",
-                              gap: 8,
-                            }}
-                          >
-                            <span>
-                              {review.analysis_result?.kategori || "—"}
-                            </span>
-
-                            <SeverityBadge
-                              value={review.analysis_result?.severity}
-                            />
-                          </div>
-                        </td>
-
-                        <td style={{ ...cellStyle, minWidth: 200 }}>
-                          {review.analysis_result?.issue ||
-                            "Belum ada issue teridentifikasi"}
-                          {" / "}
-                          {review.analysis_result?.modul || "—"}
-                          {" / "}
-                          {review.analysis_result?.fitur || "—"}
-                        </td>
-
-                        <td style={cellStyle}>{review.case_id ?? "—"}</td>
+                    <thead>
+                      <tr>
+                        {[
+                          "ID asal",
+                          "Ulasan",
+                          "Sentimen",
+                          "Kategori / Severity",
+                          "Issue / Modul / Fitur",
+                          "Case",
+                        ].map((heading) => (
+                          <th key={heading} scope="col">
+                            {heading}
+                          </th>
+                        ))}
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
 
-              <Pager
-                page={reviews.result.meta}
-                loading={reviews.loading}
-                onPage={reviews.setPage}
-              />
+                    <tbody>
+                      {reviews.result.data.map((review) => (
+                        <tr key={review.review_id}>
+                          <td className="ar-table__id">
+                            {review.source_review_id}
+                          </td>
+
+                          <td className="ar-table__text">
+                            {review.teks_ulasan}
+                          </td>
+
+                          <td>
+                            <div className="ar-stack">
+                              <SentimentBadge
+                                value={review.analysis_result?.sentimen}
+                              />
+
+                              {review.analysis_result?.needs_manual_review && (
+                                <span className="ar-flag">Perlu review</span>
+                              )}
+                            </div>
+                          </td>
+
+                          <td>
+                            <div className="ar-stack">
+                              <span>
+                                {review.analysis_result?.kategori || "—"}
+                              </span>
+
+                              <SeverityBadge
+                                value={review.analysis_result?.severity}
+                              />
+                            </div>
+                          </td>
+
+                          <td className="ar-table__issue">
+                            {review.analysis_result?.issue ||
+                              "Belum ada issue teridentifikasi"}
+                            {" / "}
+                            {review.analysis_result?.modul || "—"}
+                            {" / "}
+                            {review.analysis_result?.fitur || "—"}
+                          </td>
+
+                          <td className="ar-table__case">{review.case_id ?? "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <Pager
+                  page={reviews.result.meta}
+                  loading={reviews.loading}
+                  onPage={reviews.setPage}
+                />
+              </div>
             </>
           )
         )}
