@@ -46,7 +46,7 @@ function PullRequestForm() {
     setLoadError(null);
     setNotReady(false);
     (async () => {
-      const data = await sprint2Api.getBacklog(id);
+      const data = await sprint2Api.getIssue(id);
       if (!active) return;
       setIssue(data);
       const ready = data.status === "Ready for Pull Request" && !!data.last_push;

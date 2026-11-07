@@ -29,11 +29,11 @@ function handlerFor(items: Backlog[], extra?: ApiHandler): ApiHandler {
       const custom = await extra(call);
       if (custom) return custom;
     }
-    if (call.method === "GET" && call.path === "/maintenance-backlogs") {
+    if (call.method === "GET" && call.path === "/maintenance-backlog") {
       const status = call.query.get("status");
       return { body: paged(status ? items.filter(item => item.status === status) : items) };
     }
-    const match = call.path.match(/^\/maintenance-backlogs\/(\d+)$/);
+    const match = call.path.match(/^\/maintenance-backlog\/(\d+)$/);
     if (match) {
       const item = items.find(entry => entry.backlog_id === Number(match[1]));
       if (!item) return { status: 404, body: { message: "Tidak ditemukan" } };
@@ -60,7 +60,32 @@ test("Maintenance melihat daftar dan filter status mengirim query", async ({ pag
   await page.getByLabel("Status", { exact: true }).selectOption("Sedang Dikerjakan");
   await expect(page.getByRole("link", { name: "Login gagal setelah update" })).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Notifikasi terlambat" })).toBeVisible();
-  expect(mock.calls.some(call => call.path === "/maintenance-backlogs")).toBe(true);
+  expect(mock.calls.some(call => call.path === "/maintenance-backlog")).toBe(true);
+});
+
+test("daftar memetakan bentuk respons backend UC03", async ({ page }) => {
+  await mockApi(page, USERS.maintenance, ({ method, path }) => {
+    if (method === "GET" && path === "/maintenance-backlog") {
+      return {
+        body: {
+          data: [{
+            backlog_id: 77, case_id: 301, status: "Ready for Development",
+            assigned_to: 2, assignee_nama: "Akun Uji Developer",
+            assigned_at: null, source_branch: null,
+            created_at: "2026-11-04 07:00:00", updated_at: "2026-11-04 07:00:00",
+            judul_issue: "Kasus dari backend", kategori: "bug", modul: "auth", fitur: "login",
+            severity: "high", priority_score: "7.90",
+            ringkasan_masalah: "Ringkasan dari backend.", status_validasi: "Valid",
+          }],
+          meta: { current_page: 1, last_page: 1, per_page: 25, total: 1 },
+        },
+      };
+    }
+  });
+  await page.goto("/maintenance-backlog");
+  await expect(page.getByRole("link", { name: "Kasus dari backend" })).toBeVisible();
+  await expect(page.getByText("1 tiket tervalidasi")).toBeVisible();
+  await expect(page.getByText(/BKLG-0077/)).toBeVisible();
 });
 
 test("Developer melihat daftar tetapi detail tanpa tombol Edit", async ({ page }) => {
@@ -85,7 +110,7 @@ test("edit valid menyimpan, menampilkan pesan sukses, dan data bertahan setelah 
   await expect(page.getByRole("button", { name: "Edit", exact: true })).toBeVisible();
   const patches = mock.calls.filter(call => call.method === "PATCH");
   expect(patches).toHaveLength(1);
-  expect(patches[0].path).toBe("/maintenance-backlogs/7");
+  expect(patches[0].path).toBe("/maintenance-backlog/7");
   expect(patches[0].body.judul).toBe("Login gagal setelah pembaruan v2");
   await page.reload();
   await expect(page.getByRole("heading", { name: "Login gagal setelah pembaruan v2", exact: true })).toBeVisible();
@@ -148,7 +173,7 @@ test("500 pada daftar menampilkan error dan Coba lagi memuat ulang", async ({ pa
   let fail = true;
   const items = seed();
   await mockApi(page, USERS.maintenance, handlerFor(items, call => (
-    fail && call.method === "GET" && call.path === "/maintenance-backlogs" ? { status: 500, body: { message: "" } } : undefined
+    fail && call.method === "GET" && call.path === "/maintenance-backlog" ? { status: 500, body: { message: "" } } : undefined
   )));
   await page.goto("/maintenance-backlog");
   await expect(page.getByText("Data gagal dimuat")).toBeVisible();

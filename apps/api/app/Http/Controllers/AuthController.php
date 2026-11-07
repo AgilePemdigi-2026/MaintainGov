@@ -7,6 +7,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 class AuthController extends Controller
 {
@@ -19,7 +20,7 @@ class AuthController extends Controller
 
         $pengguna = Pengguna::where('email', $request->email)->first();
 
-        if (!$pengguna || !Hash::check($request->password, $pengguna->password)) {
+        if (! $pengguna || ! Hash::check($request->password, $pengguna->password)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Email atau password salah.',
@@ -34,10 +35,11 @@ class AuthController extends Controller
             'success' => true,
             'message' => 'Login berhasil.',
             'data' => [
-                'user_id' => $pengguna->user_id, 
+                'user_id' => $pengguna->user_id,
                 'nama' => $pengguna->nama,
                 'email' => $pengguna->email,
                 'role' => $pengguna->role,
+                'github_login' => $pengguna->github_login,
             ],
         ]);
     }
@@ -49,10 +51,11 @@ class AuthController extends Controller
         return response()->json([
             'success' => true,
             'data' => [
-                'user_id' => $pengguna->user_id, 
+                'user_id' => $pengguna->user_id,
                 'nama' => $pengguna->nama,
                 'email' => $pengguna->email,
                 'role' => $pengguna->role,
+                'github_login' => $pengguna->github_login,
             ],
         ]);
     }
@@ -66,7 +69,7 @@ class AuthController extends Controller
         $request->session()->regenerateToken();
 
         if ($user) {
-            $user->forceFill(['remember_token' => \Illuminate\Support\Str::random(60)])->save();
+            $user->forceFill(['remember_token' => Str::random(60)])->save();
         }
 
         return response()->json([

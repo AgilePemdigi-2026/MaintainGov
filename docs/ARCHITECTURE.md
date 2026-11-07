@@ -104,7 +104,7 @@ Atur timeout HTTP internal, timeout worker, lease/retry queue dan jumlah retry s
 | GET `/maintenance-cases` | daftar, filter/paginasi, hasil ringkas | Maintenance | Sprint 1 untuk hasil; Sprint 2 untuk validasi |
 | GET `/maintenance-cases/{id}` | detail dan ulasan pembentuk | Maintenance | Sprint 1 untuk hasil |
 | POST `/maintenance-cases/{id}/validation` | valid/tidak valid -> case dan backlog bila valid | Maintenance | Sprint 2 |
-| GET/PATCH `/maintenance-backlogs/{id}` | baca/edit field yang diizinkan saat belum dikerjakan | Sesuai role dan aksi | Sprint 2 |
+| GET/PATCH `/maintenance-backlog/{id}` | baca (kedua role)/edit field yang diizinkan saat belum dikerjakan (Tim Maintenance) | Sesuai role dan aksi | Sprint 2 |
 | POST `/maintenance-backlogs/{id}/claim` | klaim atomik oleh Developer | Developer | Sprint 2 |
 | POST `/repositories` | tautkan repository terpilih melalui GitHub App | Role konfigurasi: putuskan D09 | Sprint 2; uji awal Week 10 |
 | POST `/maintenance-backlogs/{id}/pull-requests` | branch tujuan, judul, deskripsi -> metadata PR nyata | Developer penerima pekerjaan | Sprint 2 |

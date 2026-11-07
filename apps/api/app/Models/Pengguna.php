@@ -12,7 +12,9 @@ class Pengguna extends Authenticatable
     protected $table = 'pengguna_sistem';
 
     protected $primaryKey = 'user_id';
+
     public $incrementing = true;
+
     protected $keyType = 'int';
 
     public $timestamps = false;
@@ -22,6 +24,7 @@ class Pengguna extends Authenticatable
         'email',
         'password',
         'role',
+        'github_login',
     ];
 
     protected $hidden = [

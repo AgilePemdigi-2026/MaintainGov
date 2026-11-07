@@ -9,12 +9,14 @@ Semua path berawalan `/api/v1`, memakai sesi Laravel (cookie + `X-CSRF-TOKEN` un
 | GET `/maintenance-cases?status=&page=&per_page=` | query (default `status=Pending`) | `{ data: MaintenanceCase[], meta }` | Maintenance | UC02 (**live, PR #31**) |
 | GET `/maintenance-cases/{id}` | - | `{ data: { case, reviews[] } }` | Maintenance | UC02 (**live, PR #31**) |
 | POST `/maintenance-cases/{id}/validate` | `{ keputusan: "Ya" \| "Tidak" }` | `{ data: { case_id, status_validasi, validator_id, validated_at, keputusan, backlog_id } }`; 409 bila bukan Pending | Maintenance | UC02 (**live, PR #31**) |
-| GET `/maintenance-backlogs?status=&search=&modul=&severity=&page=` | query | `{ data: MaintenanceBacklog[], meta }` | Kedua role | UC03/UC04 |
-| GET `/maintenance-backlogs/{id}` | - | `{ data: MaintenanceBacklog }` | Kedua role | UC03/UC04 |
-| PATCH `/maintenance-backlogs/{id}` | `BacklogUpdate` | `{ data }`; 409 bila sudah dikerjakan; 422 field wajib | Maintenance | UC03 |
+| GET `/maintenance-backlog?status=&page=&per_page=` | query | `{ data: MaintenanceBacklog[], meta }` (bentuk backend: `judul_issue`, `assignee_nama`, dst.; dipetakan oleh `client.ts`) | Kedua role | UC03 |
+| GET `/maintenance-backlog/{id}` | - | `{ data: MaintenanceBacklog }` | Kedua role | UC03 |
+| PATCH `/maintenance-backlog/{id}` | `BacklogUpdate` (`judul`, `modul`, `fitur`, `severity`, `priority_score`, `ringkasan_masalah`, `recommendation`) | `{ data }`; 409 bila sudah dikerjakan; 422 field wajib | Maintenance | UC03 |
+| GET `/developer/maintenance-issues?status=&assigned_to_me=&page=&per_page=` | query | `{ data: MaintenanceIssue[], meta }` | Developer | UC04 |
+| GET `/developer/maintenance-issues/{id}` | - | `{ data: MaintenanceIssue }` | Developer | UC04 |
 | POST `/maintenance-backlogs/{id}/claim` | - | `{ data }` status Sedang Dikerjakan; 409 `Issue telah diambil Developer lain` | Developer | UC04 |
-| GET `/maintenance-backlogs/{id}/pull-request-options` | - | `{ data: { source_branch, target_branches[], default_target, repository } }`; 409 bila belum Ready for PR | Developer assignee | UC05 (**endpoint baru, usulan**) |
-| POST `/maintenance-backlogs/{id}/pull-requests` | `{ target_branch, judul, deskripsi }` | `{ data: PullRequestInfo }` status Open; 503 bila GitHub gagal | Developer assignee | UC05 |
+| GET `/maintenance-backlogs/{id}/branches` | query `per_page` | `{ data: { issue_id, source_branch, suggested_target_branch, default_branch, branches[], repository } }`; 409 bila belum Ready for PR | Developer assignee | UC05 |
+| POST `/maintenance-backlogs/{id}/pull-requests` | `{ source_branch, target_branch, title, description }` | `{ data: PullRequestInfo }` status Open; 503 bila GitHub gagal | Developer assignee | UC05 |
 
 Field lengkap ada di `apps/web/src/lib/sprint2/types.ts`. Catatan:
 
@@ -22,7 +24,7 @@ Field lengkap ada di `apps/web/src/lib/sprint2/types.ts`. Catatan:
 - Pipeline UC01 menyimpan `severity` dan `kategori` huruf kecil (`medium`, `bug`); UI membandingkan tanpa membedakan huruf besar/kecil.
 - Uji live UC02 (1 Nov 2026, stack lokal Laravel + MySQL 8.0.46 + FastAPI model sintetis + worker): upload CSV -> case Pending -> Tidak (`Maintenance Case tidak diteruskan`, tanpa backlog) -> Ya (`Maintenance Case berhasil divalidasi`, backlog terbentuk, 1 POST walau klik ganda) -> case hilang dari daftar Pending -> validasi ulang 409 -> Developer "Akses ditolak". Lolos.
 
-- `Maintenance Issue` = backlog dalam konteks pengerjaan (glossary SRS), sehingga UC04/UC05 memakai resource `maintenance-backlogs`.
+- `Maintenance Issue` = backlog dalam konteks pengerjaan (glossary SRS). UC04 memakai namespace baca `/developer/maintenance-issues`; aksi klaim dan UC05 tetap memakai resource `maintenance-backlogs/{issue}`.
 - `last_push` hanya diisi backend setelah push GitHub terverifikasi. UI menampilkan `Ready for Pull Request` dan tombol Ajukan PR berdasarkan status dari API, bukan dari reload halaman (UC04, bukan US04).
 - `priority_score` tetap skor 0–10 dari UC01. Label High/Medium/Low di UI adalah **usulan tampilan** (`labels.ts`) sampai keputusan domain prioritas ditutup.
 - Pesan wajib UI dipusatkan di `labels.ts` (`MESSAGES`).

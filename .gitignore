@@ -1,5 +1,6 @@
 # Bahan kerja sementara saat membaca dokumen
 tmp/
+srs.txt
 
 # Dataset mentah lokal; provenance dan fixture tersamar dikelola terpisah
 /data/raw/

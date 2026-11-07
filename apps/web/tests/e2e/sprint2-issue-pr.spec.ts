@@ -38,16 +38,18 @@ const readyForPr = () => issue({
   last_push: { sha: "abcdef1234567", branch: "feature/login-fix", pushed_at: "2026-10-28T09:00:00Z" },
 });
 
-const options = {
+const branches = {
+  issue_id: 7,
   source_branch: "feature/login-fix",
-  target_branches: ["main", "develop"],
-  default_target: "develop",
-  repository: "maintaingov/app",
+  suggested_target_branch: "develop",
+  default_branch: "develop",
+  branches: [{ name: "main" }, { name: "develop" }],
+  repository: { full_name: "maintaingov/app" },
 };
 
 test("list shows Ready for Development issues", async ({ page }) => {
   const mock = await mockApi(page, USERS.developer, ({ method, path, query }) => {
-    if (method === "GET" && path === "/maintenance-backlogs") {
+    if (method === "GET" && path === "/developer/maintenance-issues") {
       expect(query.get("status")).toBe("Ready for Development");
       return { body: paged([issue()]) };
     }
@@ -56,13 +58,13 @@ test("list shows Ready for Development issues", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Maintenance Issue", exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: "Login gagal setelah update" })).toBeVisible();
   await expect(page.getByText("BKLG-0007")).toBeVisible();
-  expect(mock.calls.some(call => call.path === "/maintenance-backlogs")).toBe(true);
+  expect(mock.calls.some(call => call.path === "/developer/maintenance-issues")).toBe(true);
 });
 
 test("claim success updates status and assignee, POST sent once on double click", async ({ page }) => {
   let current = issue();
   const mock = await mockApi(page, USERS.developer, async ({ method, path }) => {
-    if (method === "GET" && path === "/maintenance-backlogs/7") return { body: { data: current } };
+    if (method === "GET" && path === "/developer/maintenance-issues/7") return { body: { data: current } };
     if (method === "POST" && path === "/maintenance-backlogs/7/claim") {
       await new Promise(resolve => setTimeout(resolve, 300));
       current = issue({ status: "Sedang Dikerjakan", assigned_to: dev, assigned_at: "2026-10-27T08:00:00Z" });
@@ -82,7 +84,7 @@ test("claim success updates status and assignee, POST sent once on double click"
 test("claim 409 shows taken message and locks the button", async ({ page }) => {
   let taken = false;
   await mockApi(page, USERS.developer, ({ method, path }) => {
-    if (method === "GET" && path === "/maintenance-backlogs/7") {
+    if (method === "GET" && path === "/developer/maintenance-issues/7") {
       return { body: { data: taken ? issue({ status: "Sedang Dikerjakan", assigned_to: other, assigned_at: "2026-10-27T08:00:00Z" }) : issue() } };
     }
     if (method === "POST" && path === "/maintenance-backlogs/7/claim") {
@@ -105,8 +107,8 @@ test("Tim Maintenance sees access denied", async ({ page }) => {
 
 test("PR form: empty submit shows incomplete message and sends no POST", async ({ page }) => {
   const mock = await mockApi(page, USERS.developer, ({ method, path }) => {
-    if (method === "GET" && path === "/maintenance-backlogs/7") return { body: { data: readyForPr() } };
-    if (method === "GET" && path === "/maintenance-backlogs/7/pull-request-options") return { body: { data: options } };
+    if (method === "GET" && path === "/developer/maintenance-issues/7") return { body: { data: readyForPr() } };
+    if (method === "GET" && path === "/maintenance-backlogs/7/branches") return { body: { data: branches } };
   });
   await page.goto("/maintenance-issue/7/pull-request");
   await expect(page.getByRole("heading", { name: "Buat Pull Request" })).toBeVisible();
@@ -118,16 +120,16 @@ test("PR form: empty submit shows incomplete message and sends no POST", async (
 
 test("PR form: success shows result with GitHub link and exact body", async ({ page }) => {
   const mock = await mockApi(page, USERS.developer, ({ method, path, body }) => {
-    if (method === "GET" && path === "/maintenance-backlogs/7") return { body: { data: readyForPr() } };
-    if (method === "GET" && path === "/maintenance-backlogs/7/pull-request-options") return { body: { data: options } };
+    if (method === "GET" && path === "/developer/maintenance-issues/7") return { body: { data: readyForPr() } };
+    if (method === "GET" && path === "/maintenance-backlogs/7/branches") return { body: { data: branches } };
     if (method === "POST" && path === "/maintenance-backlogs/7/pull-requests") {
       return {
         status: 201,
         body: {
           data: {
-            pr_id: 1, github_pr_number: 42, url: PR_URL, judul: body.judul,
+            pull_request_id: 1, github_pr_number: 42, github_pr_url: PR_URL, title: body.title,
             source_branch: "feature/login-fix", target_branch: body.target_branch,
-            status: "Open", created_at: "2026-10-29T09:00:00Z",
+            lifecycle_state: "open", created_at: "2026-10-29T09:00:00Z",
           },
         },
       };
@@ -143,13 +145,18 @@ test("PR form: success shows result with GitHub link and exact body", async ({ p
   await expect(page.getByRole("link", { name: PR_URL })).toHaveAttribute("href", PR_URL);
   const post = mock.calls.filter(call => call.method === "POST");
   expect(post).toHaveLength(1);
-  expect(post[0].body).toEqual({ target_branch: "develop", judul: "fix(auth): perbaiki login", deskripsi: "Perbaikan login." });
+  expect(post[0].body).toEqual({
+    source_branch: "feature/login-fix",
+    target_branch: "develop",
+    title: "fix(auth): perbaiki login",
+    description: "Perbaikan login.",
+  });
 });
 
 test("PR form: GitHub 503 shows connection message and no success", async ({ page }) => {
   await mockApi(page, USERS.developer, ({ method, path }) => {
-    if (method === "GET" && path === "/maintenance-backlogs/7") return { body: { data: readyForPr() } };
-    if (method === "GET" && path === "/maintenance-backlogs/7/pull-request-options") return { body: { data: options } };
+    if (method === "GET" && path === "/developer/maintenance-issues/7") return { body: { data: readyForPr() } };
+    if (method === "GET" && path === "/maintenance-backlogs/7/branches") return { body: { data: branches } };
     if (method === "POST" && path === "/maintenance-backlogs/7/pull-requests") {
       return { status: 503, body: { message: "Koneksi GitHub tidak tersedia" } };
     }
@@ -166,7 +173,7 @@ test("PR form: GitHub 503 shows connection message and no success", async ({ pag
 test("mobile 375x812 shows the issue list heading", async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
   await mockApi(page, USERS.developer, ({ method, path }) => {
-    if (method === "GET" && path === "/maintenance-backlogs") return { body: paged([issue()]) };
+    if (method === "GET" && path === "/developer/maintenance-issues") return { body: paged([issue()]) };
   });
   await page.goto("/maintenance-issue");
   await expect(page.getByRole("heading", { name: "Maintenance Issue", exact: true })).toBeVisible();
