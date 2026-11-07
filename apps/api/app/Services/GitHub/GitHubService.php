@@ -3,16 +3,20 @@
 namespace App\Services\GitHub;
 
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 
 /**
- * Read-only GitHub adapter for repository connection checks.
+ * Server-side GitHub adapter.
  *
- * The browser never receives the GitHub token. This class only performs a
- * GET request for repository metadata and maps GitHub responses to safe,
- * internal statuses. GitHub App JWT exchange is not implemented yet because
- * the App credentials and permissions have not been verified by the team.
+ * Originally implemented in Week 1 as a read-only repository connection check.
+ * UC04/UC05 extend the same adapter with branch/commit reads and Pull Request
+ * writes so there is a single place that owns GitHub authentication, timeouts,
+ * response validation, and safe error mapping.
+ *
+ * The browser never receives the GitHub token. GitHub App JWT exchange is not
+ * implemented; the configured bearer token is used for both read and write.
  */
 class GitHubService
 {
@@ -20,14 +24,13 @@ class GitHubService
 
     private const API_VERSION = '2022-11-28';
 
+    private const USER_AGENT = 'MaintainGov/1.0';
+
     public function checkConnection(): GitHubConnectionResult
     {
-        $token = trim((string) config('services.github.token'));
-        $owner = trim((string) config('services.github.owner'));
-        $repository = trim((string) config('services.github.repository'));
-        $apiUrl = rtrim(trim((string) config('services.github.api_url', 'https://api.github.com')), '/');
+        $config = $this->configuration();
 
-        if ($token === '' || $owner === '' || $repository === '' || $apiUrl === '') {
+        if ($config === null) {
             return $this->error(
                 GitHubConnectionStatus::Unavailable,
                 503,
@@ -36,20 +39,10 @@ class GitHubService
             );
         }
 
-        $url = $apiUrl.'/repos/'.rawurlencode($owner).'/'.rawurlencode($repository);
-        $timeout = max(1, (int) config('services.github.timeout', 10));
-        $connectTimeout = max(1, (int) config('services.github.connect_timeout', 5));
+        $url = $config['api_url'].'/repos/'.rawurlencode($config['owner']).'/'.rawurlencode($config['repository']);
 
         try {
-            $response = Http::withToken($token)
-                ->withHeaders([
-                    'Accept' => self::ACCEPT_HEADER,
-                    'X-GitHub-Api-Version' => self::API_VERSION,
-                    'User-Agent' => 'MaintainGov/1.0',
-                ])
-                ->connectTimeout($connectTimeout)
-                ->timeout($timeout)
-                ->get($url);
+            $response = $this->http($config)->get($url);
         } catch (ConnectionException) {
             return $this->error(
                 GitHubConnectionStatus::Unavailable,
@@ -67,7 +60,429 @@ class GitHubService
             );
         }
 
-        return $this->classifyResponse($response, $owner.'/'.$repository);
+        return $this->classifyResponse($response, $config['owner'].'/'.$config['repository']);
+    }
+
+    public function getBranch(string $branch): GitHubApiResult
+    {
+        $config = $this->configuration();
+
+        if ($config === null) {
+            return $this->notConfigured();
+        }
+
+        $url = $config['api_url'].'/repos/'.rawurlencode($config['owner']).'/'.rawurlencode($config['repository'])
+            .'/branches/'.rawurlencode($branch);
+
+        return $this->callAndValidate(
+            fn () => $this->http($config)->get($url),
+            function (array $payload) use ($branch): ?array {
+                $normalized = $this->normalizeBranch($payload);
+
+                // Never accept a response for a different branch: branch
+                // identity is part of the push verification evidence.
+                return $normalized !== null && $normalized['name'] === $branch
+                    ? $normalized
+                    : null;
+            },
+        );
+    }
+
+    public function listBranches(int $perPage = 100): GitHubApiResult
+    {
+        $config = $this->configuration();
+
+        if ($config === null) {
+            return $this->notConfigured();
+        }
+
+        $url = $config['api_url'].'/repos/'.rawurlencode($config['owner']).'/'.rawurlencode($config['repository'])
+            .'/branches';
+
+        return $this->callAndValidate(
+            fn () => $this->http($config)->get($url, [
+                'per_page' => max(1, min(100, $perPage)),
+            ]),
+            function (array $payload): ?array {
+                $branches = [];
+
+                foreach ($payload as $item) {
+                    if (! is_array($item)) {
+                        return null;
+                    }
+
+                    $branch = $this->normalizeBranch($item);
+
+                    if ($branch === null) {
+                        return null;
+                    }
+
+                    $branches[] = $branch;
+                }
+
+                return $branches;
+            },
+        );
+    }
+
+    public function getCommit(string $sha): GitHubApiResult
+    {
+        if (! preg_match('/^[0-9a-fA-F]{40}$/', $sha)) {
+            return GitHubApiResult::failure(
+                'GITHUB_INVALID_COMMIT_SHA',
+                'Commit SHA tidak valid.',
+                422,
+            );
+        }
+
+        $config = $this->configuration();
+
+        if ($config === null) {
+            return $this->notConfigured();
+        }
+
+        $url = $config['api_url'].'/repos/'.rawurlencode($config['owner']).'/'.rawurlencode($config['repository'])
+            .'/commits/'.rawurlencode($sha);
+
+        return $this->callAndValidate(
+            fn () => $this->http($config)->get($url),
+            function (array $payload) use ($sha): ?array {
+                $returnedSha = $payload['sha'] ?? null;
+
+                if (! is_string($returnedSha) || strcasecmp($returnedSha, $sha) !== 0) {
+                    return null;
+                }
+
+                return [
+                    'sha' => $returnedSha,
+                    'html_url' => is_string($payload['html_url'] ?? null) ? $payload['html_url'] : null,
+                    'author_login' => is_string(data_get($payload, 'author.login'))
+                        ? data_get($payload, 'author.login')
+                        : null,
+                    'author_name' => is_string(data_get($payload, 'commit.author.name'))
+                        ? data_get($payload, 'commit.author.name')
+                        : null,
+                    'committed_at' => is_string(data_get($payload, 'commit.author.date'))
+                        ? data_get($payload, 'commit.author.date')
+                        : null,
+                    'message' => is_string(data_get($payload, 'commit.message'))
+                        ? data_get($payload, 'commit.message')
+                        : null,
+                ];
+            },
+        );
+    }
+
+    public function createPullRequest(string $title, string $head, string $base, string $body): GitHubApiResult
+    {
+        $config = $this->configuration();
+
+        if ($config === null) {
+            return $this->notConfigured();
+        }
+
+        $url = $config['api_url'].'/repos/'.rawurlencode($config['owner']).'/'.rawurlencode($config['repository'])
+            .'/pulls';
+
+        return $this->callAndValidate(
+            fn () => $this->http($config)->post($url, [
+                'title' => $title,
+                'head' => $head,
+                'base' => $base,
+                'body' => $body,
+            ]),
+            fn (array $payload): ?array => $this->normalizePullRequest($payload),
+            [200, 201],
+        );
+    }
+
+    /**
+     * Search GitHub for a PR with the same head/base. Used by reconciliation
+     * after a timeout or a database failure, before creating anything again.
+     */
+    public function findPullRequest(string $head, string $base): GitHubApiResult
+    {
+        $config = $this->configuration();
+
+        if ($config === null) {
+            return $this->notConfigured();
+        }
+
+        $url = $config['api_url'].'/repos/'.rawurlencode($config['owner']).'/'.rawurlencode($config['repository'])
+            .'/pulls';
+
+        return $this->callAndValidate(
+            fn () => $this->http($config)->get($url, [
+                'state' => 'all',
+                'head' => $config['owner'].':'.$head,
+                'base' => $base,
+                'per_page' => 10,
+            ]),
+            function (array $payload): array|false|null {
+                // An empty result is a valid "no PR found" answer, not a
+                // malformed GitHub response. Reconciliation depends on it.
+                if ($payload === []) {
+                    return null;
+                }
+
+                $normalized = [];
+
+                foreach ($payload as $item) {
+                    if (! is_array($item)) {
+                        return false;
+                    }
+
+                    $pr = $this->normalizePullRequest($item);
+
+                    if ($pr === null) {
+                        return false;
+                    }
+
+                    $normalized[] = $pr;
+                }
+
+                foreach ($normalized as $pr) {
+                    if ($pr['state'] === 'open') {
+                        return $pr;
+                    }
+                }
+
+                return $normalized[0];
+            },
+            allowNull: true,
+        );
+    }
+
+    public function getPullRequest(int $number): GitHubApiResult
+    {
+        if ($number < 1) {
+            return GitHubApiResult::failure(
+                'GITHUB_INVALID_PULL_REQUEST',
+                'Nomor Pull Request tidak valid.',
+                422,
+            );
+        }
+
+        $config = $this->configuration();
+
+        if ($config === null) {
+            return $this->notConfigured();
+        }
+
+        $url = $config['api_url'].'/repos/'.rawurlencode($config['owner']).'/'.rawurlencode($config['repository'])
+            .'/pulls/'.$number;
+
+        return $this->callAndValidate(
+            fn () => $this->http($config)->get($url),
+            fn (array $payload): ?array => $this->normalizePullRequest($payload),
+        );
+    }
+
+    /**
+     * @return array{token: string, owner: string, repository: string, api_url: string, timeout: int, connect_timeout: int}|null
+     */
+    private function configuration(): ?array
+    {
+        $token = trim((string) config('services.github.token'));
+        $owner = trim((string) config('services.github.owner'));
+        $repository = trim((string) config('services.github.repository'));
+        $apiUrl = rtrim(trim((string) config('services.github.api_url', 'https://api.github.com')), '/');
+
+        if ($token === '' || $owner === '' || $repository === '' || $apiUrl === '') {
+            return null;
+        }
+
+        return [
+            'token' => $token,
+            'owner' => $owner,
+            'repository' => $repository,
+            'api_url' => $apiUrl,
+            'timeout' => max(1, (int) config('services.github.timeout', 10)),
+            'connect_timeout' => max(1, (int) config('services.github.connect_timeout', 5)),
+        ];
+    }
+
+    /**
+     * @param  array{token: string, owner: string, repository: string, api_url: string, timeout: int, connect_timeout: int}  $config
+     */
+    private function http(array $config): PendingRequest
+    {
+        return Http::withToken($config['token'])
+            ->withHeaders([
+                'Accept' => self::ACCEPT_HEADER,
+                'X-GitHub-Api-Version' => self::API_VERSION,
+                'User-Agent' => self::USER_AGENT,
+            ])
+            ->connectTimeout($config['connect_timeout'])
+            ->timeout($config['timeout']);
+    }
+
+    /**
+     * Execute a GitHub call and validate both the transport and the payload.
+     *
+     * @param  callable(): Response  $call
+     * @param  callable(array<mixed>): (array<string, mixed>|array<int, mixed>|false|null)  $validate
+     * @param  array<int, int>  $acceptedStatuses
+     * @param  bool  $allowNull  Treat a null validator result as valid "not found".
+     */
+    private function callAndValidate(
+        callable $call,
+        callable $validate,
+        array $acceptedStatuses = [200],
+        bool $allowNull = false,
+    ): GitHubApiResult {
+        try {
+            $response = $call();
+        } catch (ConnectionException) {
+            return GitHubApiResult::failure(
+                'GITHUB_UNAVAILABLE',
+                'GitHub is temporarily unavailable.',
+                503,
+            );
+        } catch (\Throwable) {
+            return GitHubApiResult::failure(
+                'GITHUB_UNAVAILABLE',
+                'GitHub is temporarily unavailable.',
+                503,
+            );
+        }
+
+        if (! in_array($response->status(), $acceptedStatuses, true)) {
+            return $this->failureFromResponse($response);
+        }
+
+        $payload = $response->json();
+
+        if (! is_array($payload)) {
+            return $this->invalidResponse();
+        }
+
+        $data = $validate($payload);
+
+        if ($data === false || ($data === null && ! $allowNull)) {
+            return $this->invalidResponse();
+        }
+
+        return GitHubApiResult::success($data, $response->status());
+    }
+
+    private function failureFromResponse(Response $response): GitHubApiResult
+    {
+        return match (true) {
+            $response->status() === 401 => GitHubApiResult::failure(
+                'GITHUB_UNAUTHORIZED',
+                'GitHub authentication failed.',
+                401,
+            ),
+            $response->status() === 403 && $this->isRateLimited($response) => $this->rateLimitedApi($response),
+            $response->status() === 403 => GitHubApiResult::failure(
+                'GITHUB_FORBIDDEN',
+                'GitHub access was denied.',
+                403,
+            ),
+            $response->status() === 429 => $this->rateLimitedApi($response),
+            $response->status() === 404 => GitHubApiResult::failure(
+                'GITHUB_RESOURCE_NOT_FOUND',
+                'GitHub resource was not found.',
+                404,
+            ),
+            $response->status() === 422 => GitHubApiResult::failure(
+                'GITHUB_VALIDATION_FAILED',
+                'GitHub rejected the request.',
+                422,
+            ),
+            $response->status() >= 500 => GitHubApiResult::failure(
+                'GITHUB_UNAVAILABLE',
+                'GitHub is temporarily unavailable.',
+                503,
+            ),
+            default => GitHubApiResult::failure(
+                'GITHUB_UNEXPECTED_STATUS',
+                'GitHub returned an unexpected status.',
+                503,
+            ),
+        };
+    }
+
+    private function rateLimitedApi(Response $response): GitHubApiResult
+    {
+        return GitHubApiResult::failure(
+            'GITHUB_RATE_LIMITED',
+            'GitHub rate limit was reached.',
+            429,
+            $this->retryAfterSeconds($response),
+        );
+    }
+
+    private function notConfigured(): GitHubApiResult
+    {
+        return GitHubApiResult::failure(
+            'GITHUB_NOT_CONFIGURED',
+            'GitHub integration is not configured.',
+            503,
+        );
+    }
+
+    private function invalidResponse(): GitHubApiResult
+    {
+        return GitHubApiResult::failure(
+            'GITHUB_INVALID_RESPONSE',
+            'GitHub returned an unexpected response.',
+            503,
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array{name: string, sha: string, protected: bool}|null
+     */
+    private function normalizeBranch(array $payload): ?array
+    {
+        $name = $payload['name'] ?? null;
+        $sha = data_get($payload, 'commit.sha');
+
+        if (! is_string($name) || $name === '' || ! is_string($sha) || $sha === '') {
+            return null;
+        }
+
+        return [
+            'name' => $name,
+            'sha' => $sha,
+            'protected' => (bool) ($payload['protected'] ?? false),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>|null
+     */
+    private function normalizePullRequest(array $payload): ?array
+    {
+        $id = $payload['id'] ?? null;
+        $number = $payload['number'] ?? null;
+        $url = $payload['html_url'] ?? null;
+        $state = $payload['state'] ?? null;
+        $headSha = data_get($payload, 'head.sha');
+        $baseSha = data_get($payload, 'base.sha');
+
+        if (! is_int($id) || ! is_int($number) || $number < 1
+            || ! is_string($url) || $url === ''
+            || ! is_string($state) || ! in_array($state, ['open', 'closed'], true)
+            || ! is_string($headSha) || $headSha === ''
+            || ! is_string($baseSha) || $baseSha === '') {
+            return null;
+        }
+
+        return [
+            'github_pr_id' => $id,
+            'github_pr_number' => $number,
+            'github_pr_url' => $url,
+            'state' => $state,
+            'head_sha' => $headSha,
+            'base_sha' => $baseSha,
+            'title' => is_string($payload['title'] ?? null) ? $payload['title'] : null,
+            'draft' => (bool) ($payload['draft'] ?? false),
+        ];
     }
 
     private function classifyResponse(Response $response, string $expectedFullName): GitHubConnectionResult
@@ -114,7 +529,7 @@ class GitHubService
         $payload = $response->json();
 
         if (! is_array($payload)) {
-            return $this->invalidResponse();
+            return $this->invalidConnectionResponse();
         }
 
         $owner = data_get($payload, 'owner.login');
@@ -125,7 +540,7 @@ class GitHubService
             || ! is_string($name) || $name === ''
             || ! is_string($fullName) || $fullName === ''
             || strcasecmp($fullName, $expectedFullName) !== 0) {
-            return $this->invalidResponse();
+            return $this->invalidConnectionResponse();
         }
 
         $defaultBranch = data_get($payload, 'default_branch');
@@ -135,6 +550,7 @@ class GitHubService
             status: GitHubConnectionStatus::Connected,
             httpStatus: 200,
             repository: [
+                'id' => is_int(data_get($payload, 'id')) ? (int) data_get($payload, 'id') : null,
                 'owner' => $owner,
                 'name' => $name,
                 'full_name' => $fullName,
@@ -146,7 +562,7 @@ class GitHubService
         );
     }
 
-    private function invalidResponse(): GitHubConnectionResult
+    private function invalidConnectionResponse(): GitHubConnectionResult
     {
         return $this->error(
             GitHubConnectionStatus::Unavailable,

@@ -35,7 +35,7 @@ function IssueDetail() {
     let active = true;
     setLoading(true);
     setError(null);
-    sprint2Api.getBacklog(id)
+    sprint2Api.getIssue(id)
       .then(data => { if (active) setIssue(data); })
       .catch(err => {
         if (!active) return;
@@ -62,7 +62,7 @@ function IssueDetail() {
       if (err instanceof ApiError && err.status === 409) {
         setTaken(true);
         setClaimError(MESSAGES.issueTaken);
-        try { setIssue(await sprint2Api.getBacklog(id)); } catch { /* data lama tetap tampil; tombol tetap terkunci */ }
+        try { setIssue(await sprint2Api.getIssue(id)); } catch { /* data lama tetap tampil; tombol tetap terkunci */ }
       } else {
         setClaimError(handleError(err, "Issue tidak dapat diambil. Coba lagi."));
       }

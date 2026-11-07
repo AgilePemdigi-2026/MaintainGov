@@ -5,7 +5,9 @@ Acuan implementasi: `apps/api/app/Http/Controllers/MaintenanceBacklogController.
 (§Hardening index + keputusan **D-W12-02-01**), `apps/api/config/cors.php` (PATCH/PUT/DELETE diizinkan).
 Pemakai kontrak: **Valisha (Next.js frontend)** — halaman backlog; Demas/Hanif (backend).
 
-Semua endpoint di belakang middleware `['auth', 'role:Tim Maintenance']` (sesi cookie + CSRF).
+Endpoint baca (`GET` list/detail) tersedia untuk `Tim Maintenance` dan `Developer`; `PATCH`
+hanya untuk `Tim Maintenance` (sesi cookie + CSRF). Developer memakai halaman Maintenance Issue
+(UC04) yang membaca resource backlog yang sama.
 Prefix lengkap selalu `/api/v1`. CORS `PATCH` diizinkan untuk frontend browser.
 
 Format umum: seluruh respons ber-envelope `{success: bool, message: string, data: any}`; 422 menambahkan key `errors` per field (pesan Bahasa Indonesia, `apps/api/lang/id/validation.php`).
@@ -37,6 +39,7 @@ Respons 200:
             "case_id": 7,
             "status": "Ready for Development",
             "assigned_to": null,
+            "assignee_nama": null,
             "assigned_at": null,
             "source_branch": null,
             "created_at": "2026-11-01 13:20:45",
@@ -70,6 +73,7 @@ Respons 200:
         "case_id": 7,
         "status": "Ready for Development",
         "assigned_to": null,
+        "assignee_nama": null,
         "assigned_at": null,
         "source_branch": null,
         "created_at": "2026-11-01 13:20:45",
@@ -99,7 +103,11 @@ Body:
 | Field | Aturan | Wajib |
 | --- | --- | --- |
 | `ringkasan_masalah` | `required\|string` | **Ya** |
-| `priority` | `sometimes\|in:High,Medium,Low` | tidak |
+| `judul` / `judul_issue` | `sometimes\|string\|max:255` (keduanya diterima; `judul` diprioritaskan) | tidak |
+| `fitur` | `sometimes\|string\|max:100` | tidak |
+| `recommendation` | `sometimes\|nullable\|string`; `null`/string kosong mengosongkan rekomendasi | tidak |
+| `priority_score` | `sometimes\|numeric\|min:0\|max:10` (skor langsung, diprioritaskan di atas `priority`) | tidak |
+| `priority` | `sometimes\|in:High,Medium,Low` (kompatibilitas; dimap ke bucket) | tidak |
 | `severity` | `sometimes\|string\|max:20` | tidak |
 | `modul` | `sometimes\|string\|max:100` | tidak |
 
@@ -107,8 +115,9 @@ Perilaku `updated_at`:
 - Setiap PATCH yang lolos guard **selalu** memutakhirkan `maintenance_backlog.updated_at` (timestamps), sekalipun hanya `ringkasan_masalah` yang berubah — dipakai sebagai penafsir "backlog terakhir ditinjau".
 
 Perilaku prioritas (**D-W12-02-01**):
-- UI memilih label `High/Medium/Low`; backend menuliskan bucket `priority_score` tetap: **High = 9.00, Medium = 5.50, Low = 2.00**.
-- Skor model ML (0–10) **tergantikan** oleh nilai bucket ini; ordering list tetap konsisten (`High > Medium > Low` → skor → `backlog_id`).
+- UI boleh mengirim `priority_score` langsung (0–10) agar nilai dari form bertahan apa adanya.
+- Bila hanya `priority` yang dikirim, backend menuliskan bucket `priority_score` tetap: **High = 9.00, Medium = 5.50, Low = 2.00**.
+- Ordering list tetap konsisten (`High > Medium > Low` → skor → `backlog_id`).
 - Keputusan menetapkan **tanpa kolom baru**; perubahan ke skema tersendiri menunggu konfirmasi PO.
 
 Respons 200:
@@ -144,7 +153,7 @@ Contoh error:
 // 401 (anonim)
 {"success": false, "message": "Akses ditolak. Silakan login terlebih dahulu.", "data": null}
 
-// 403 (Developer)
+// 403 (Developer mengirim PATCH; GET tetap 200)
 {"success": false, "message": "Akses ditolak. Role tidak memiliki izin.", "data": null}
 
 // 404 (backlog tidak ada)

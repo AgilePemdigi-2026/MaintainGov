@@ -24,6 +24,14 @@ return [
         'token' => env('GITHUB_TOKEN'),
         'timeout' => (int) env('GITHUB_TIMEOUT', 10),
         'connect_timeout' => (int) env('GITHUB_CONNECT_TIMEOUT', 5),
+        'default_branch' => env('GITHUB_DEFAULT_BRANCH', 'main'),
+        // HMAC secret used by POST /api/v1/webhooks/github. Empty disables
+        // webhook processing (requests are rejected, never accepted unsigned).
+        'webhook_secret' => env('GITHUB_WEBHOOK_SECRET'),
+        'webhook_max_age' => (int) env('GITHUB_WEBHOOK_MAX_AGE', 900),
+        // A pending PR row younger than this is treated as an in-flight
+        // submission; older pending rows may be reconciled/retried safely.
+        'pull_request_stale_seconds' => (int) env('GITHUB_PR_STALE_SECONDS', 60),
         // Mock UC04-UC05 routes are hidden outside local/testing by default.
         'mock_enabled' => filter_var(
             env('GITHUB_MOCK_ENABLED', in_array(env('APP_ENV', 'production'), ['local', 'testing'], true)),

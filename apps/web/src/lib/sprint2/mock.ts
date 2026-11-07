@@ -3,7 +3,7 @@
 import { ApiError } from "@/lib/api";
 import type { Sprint2Api } from "./client";
 import type {
-  AuthUser, BacklogStatus, CaseReview, MaintenanceBacklog, MaintenanceCase, MaintenanceCaseDetail, Paged,
+  AuthUser, BacklogListQuery, BacklogStatus, CaseReview, MaintenanceBacklog, MaintenanceCase, MaintenanceCaseDetail, Paged,
 } from "./types";
 
 const STATE_KEY = "mg-sprint2-mock-state";
@@ -125,6 +125,14 @@ function findBacklog(state: MockState, id: number) {
   return backlog;
 }
 
+function filterBacklogs(state: MockState, query: BacklogListQuery = {}) {
+  return state.backlogs
+    .filter(item => !query.status || item.status === query.status)
+    .filter(item => includes(`${item.judul} ${item.backlog_id} ${item.case_id}`, query.search))
+    .filter(item => !query.modul || item.modul === query.modul)
+    .filter(item => !query.severity || item.severity === query.severity);
+}
+
 export const mockApi: Sprint2Api = {
   async me() { return delay(currentUser()); },
   async logout() { try { localStorage.removeItem(MOCK_ROLE_KEY); } catch { /* abaikan */ } },
@@ -174,15 +182,20 @@ export const mockApi: Sprint2Api = {
   },
 
   async listBacklogs(query = {}) {
-    const items = load().backlogs
-      .filter(item => !query.status || item.status === query.status)
-      .filter(item => includes(`${item.judul} ${item.backlog_id} ${item.case_id}`, query.search))
-      .filter(item => !query.modul || item.modul === query.modul)
-      .filter(item => !query.severity || item.severity === query.severity);
-    return delay(paginate(items, query.page));
+    return delay(paginate(filterBacklogs(load(), query), query.page));
   },
 
   async getBacklog(id) { return delay(findBacklog(load(), id)); },
+
+  async listIssues(query = {}) {
+    requireRole("Developer");
+    return delay(paginate(filterBacklogs(load(), query), query.page));
+  },
+
+  async getIssue(id) {
+    requireRole("Developer");
+    return delay(findBacklog(load(), id));
+  },
 
   async updateBacklog(id, input) {
     requireRole("Tim Maintenance");

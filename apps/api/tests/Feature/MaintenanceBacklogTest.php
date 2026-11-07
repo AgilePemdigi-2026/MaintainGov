@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Pengguna;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -24,7 +25,6 @@ class MaintenanceBacklogTest extends TestCase
     }
 
     /** ------------ Helper ------------ */
-
     private function buatPengguna(string $role): int
     {
         return DB::table('pengguna_sistem')->insertGetId([
@@ -55,16 +55,15 @@ class MaintenanceBacklogTest extends TestCase
 
     private function tim()
     {
-        return $this->actingAs(\App\Models\Pengguna::query()->findOrFail($this->akun['tim']));
+        return $this->actingAs(Pengguna::query()->findOrFail($this->akun['tim']));
     }
 
     private function developer()
     {
-        return $this->actingAs(\App\Models\Pengguna::query()->findOrFail($this->akun['developer']));
+        return $this->actingAs(Pengguna::query()->findOrFail($this->akun['developer']));
     }
 
     /** ------------ List & urutan & paginasi ------------ */
-
     public function test_list_urutan_prioritas_high_medium_low_lalu_backlog_id(): void
     {
         $high = $this->buatBacklog(['severity' => 'High', 'priority_score' => 9.00]);
@@ -111,7 +110,6 @@ class MaintenanceBacklogTest extends TestCase
     }
 
     /** ------------ Detail ------------ */
-
     public function test_detail_menampilkan_backlog_dan_ringkasan_case(): void
     {
         $ids = $this->buatBacklog();
@@ -135,7 +133,6 @@ class MaintenanceBacklogTest extends TestCase
     }
 
     /** ------------ PATCH ------------ */
-
     public function test_patch_sukses_mengubah_field_dan_updated_at_backlog(): void
     {
         $ids = $this->buatBacklog(backlogOverride: ['updated_at' => '2020-01-01 00:00:00']);
@@ -191,6 +188,47 @@ class MaintenanceBacklogTest extends TestCase
         );
     }
 
+    public function test_patch_menerima_field_kontrak_frontend_dan_skor_langsung(): void
+    {
+        $ids = $this->buatBacklog();
+
+        $response = $this->tim()->patchJson('/api/v1/maintenance-backlog/'.$ids['backlog_id'], [
+            'judul' => 'Judul hasil integrasi frontend',
+            'modul' => 'Modul hasil integrasi',
+            'fitur' => 'Fitur hasil integrasi',
+            'severity' => 'Low',
+            'priority_score' => 3.40,
+            'ringkasan_masalah' => 'Ringkasan hasil integrasi frontend.',
+            'recommendation' => 'Rekomendasi hasil integrasi frontend.',
+        ]);
+
+        $response->assertStatus(200)
+            ->assertJson(['success' => true, 'message' => 'Backlog diperbarui.']);
+
+        $case = DB::table('maintenance_case')->where('case_id', $ids['case_id'])->first();
+        $this->assertSame('Judul hasil integrasi frontend', $case->judul_issue);
+        $this->assertSame('Modul hasil integrasi', $case->modul);
+        $this->assertSame('Fitur hasil integrasi', $case->fitur);
+        $this->assertSame('Low', $case->severity);
+        $this->assertEquals(3.40, (float) $case->priority_score);
+        $this->assertSame('Ringkasan hasil integrasi frontend.', $case->ringkasan_masalah);
+        $this->assertSame('Rekomendasi hasil integrasi frontend.', $case->recommendation);
+    }
+
+    public function test_patch_dapat_mengosongkan_recommendation(): void
+    {
+        $ids = $this->buatBacklog(['recommendation' => 'Rekomendasi awal.']);
+
+        $this->tim()->patchJson('/api/v1/maintenance-backlog/'.$ids['backlog_id'], [
+            'ringkasan_masalah' => 'Ringkasan baru.',
+            'recommendation' => null,
+        ])->assertStatus(200);
+
+        $this->assertNull(
+            DB::table('maintenance_case')->where('case_id', $ids['case_id'])->value('recommendation'),
+        );
+    }
+
     public function test_patch_status_sudah_dikerjakan_ditolak_409_br12(): void
     {
         $ids = $this->buatBacklog(backlogOverride: ['status' => 'Sedang Dikerjakan']);
@@ -217,13 +255,16 @@ class MaintenanceBacklogTest extends TestCase
     }
 
     /** ------------ Otorisasi ------------ */
-
-    public function test_developer_ditolak_403_pada_ketiga_endpoint(): void
+    public function test_developer_dapat_membaca_tetapi_tidak_dapat_mengubah_backlog(): void
     {
         $ids = $this->buatBacklog();
 
-        $this->developer()->getJson('/api/v1/maintenance-backlog')->assertStatus(403);
-        $this->developer()->getJson('/api/v1/maintenance-backlog/'.$ids['backlog_id'])->assertStatus(403);
+        $this->developer()->getJson('/api/v1/maintenance-backlog')
+            ->assertStatus(200)
+            ->assertJson(['success' => true, 'meta' => ['total' => 1]]);
+        $this->developer()->getJson('/api/v1/maintenance-backlog/'.$ids['backlog_id'])
+            ->assertStatus(200)
+            ->assertJson(['success' => true, 'data' => ['backlog_id' => $ids['backlog_id']]]);
         $this->developer()->patchJson('/api/v1/maintenance-backlog/'.$ids['backlog_id'], [
             'ringkasan_masalah' => 'Kecobaan Developer.',
         ])->assertStatus(403);

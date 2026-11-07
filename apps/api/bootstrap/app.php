@@ -1,5 +1,6 @@
 <?php
 
+use App\Exceptions\ApiException;
 use App\Http\Middleware\EnsureGitHubMockEnabled;
 use App\Http\Middleware\RoleMiddleware;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
@@ -32,6 +33,12 @@ return Application::configure(basePath: dirname(__DIR__))
             StartSession::class,
             PreventRequestForgery::class,
         ]);
+
+        // GitHub signs webhook payloads with HMAC; it cannot send a browser
+        // CSRF token. Signature verification is enforced in the controller.
+        $middleware->validateCsrfTokens(except: [
+            'api/v1/webhooks/github',
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
@@ -41,9 +48,37 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // SRS 3.4.5: envelope JSON Bahasa Indonesia hanya untuk client yang
         // berkomunikasi JSON; pesan teknis (SQL, stack) tidak pernah bocor.
-        $wantsJsonEnvelope = fn (Request $request): bool =>
-            str_contains((string) $request->header('Accept', ''), 'application/json')
+        $wantsJsonEnvelope = fn (Request $request): bool => str_contains((string) $request->header('Accept', ''), 'application/json')
             || (bool) $request->expectsJson();
+
+        // UC04/UC05 domain errors use a stable error.code envelope.
+        $exceptions->render(function (ApiException $e, Request $request) use ($wantsJsonEnvelope) {
+            if (! $wantsJsonEnvelope($request)) {
+                return null;
+            }
+
+            $error = [
+                'code' => $e->errorCode,
+                'message' => $e->getMessage(),
+            ];
+
+            if ($e->retryAfterSeconds !== null) {
+                $error['retry_after_seconds'] = $e->retryAfterSeconds;
+            }
+
+            $response = response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'error' => $error,
+                'data' => $e->data,
+            ], $e->status);
+
+            if ($e->retryAfterSeconds !== null) {
+                $response->header('Retry-After', (string) $e->retryAfterSeconds);
+            }
+
+            return $response;
+        });
 
         // Route tidak ditemukan (mis. typo path /maintenance-backlogs dengan
         // tambahan 's'). Laravel 13 router melempar NotFoundHttpException

@@ -25,12 +25,15 @@ Route::prefix('v1')->group(function () {
         Route::post('/maintenance-cases/{id}/validate', [MaintenanceCaseController::class, 'validate'])->whereNumber('id');
     });
 
-    // UC03: backlog hasil validasi case (Tim Maintenance)
-    Route::middleware(['auth', 'role:Tim Maintenance'])->group(function () {
+    // UC03: backlog hasil validasi case. Kedua role boleh membaca (ARCHITECTURE.md
+    // §2); hanya Tim Maintenance yang boleh mengubah field backlog.
+    Route::middleware(['auth', 'role:Tim Maintenance,Developer'])->group(function () {
         Route::get('/maintenance-backlog', [MaintenanceBacklogController::class, 'index']);
         Route::get('/maintenance-backlog/{id}', [MaintenanceBacklogController::class, 'show'])->whereNumber('id');
-        Route::patch('/maintenance-backlog/{id}', [MaintenanceBacklogController::class, 'update'])->whereNumber('id');
     });
+    Route::patch('/maintenance-backlog/{id}', [MaintenanceBacklogController::class, 'update'])
+        ->whereNumber('id')
+        ->middleware(['auth', 'role:Tim Maintenance']);
 
     // Public routes
     Route::prefix('auth')->group(function () {

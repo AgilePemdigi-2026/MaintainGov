@@ -1,13 +1,35 @@
 # Integrasi GitHub — Feature 9
 
-Status: implementasi read-only selesai untuk bagian yang tidak membutuhkan kredensial GitHub. **Live authenticated check masih BLOCKED** karena `GITHUB_TOKEN` belum tersedia di environment lokal. Dokumen ini menjelaskan implementasi aktual, batas operasi tulis, kontrak UC04–UC05, dan langkah verifikasi.
+Status: koneksi read-only dan backend UC04–UC05 (klaim atomik, verifikasi push, webhook, pembuatan PR nyata, idempotensi, rekonsiliasi) sudah diimplementasikan serta diuji dengan GitHub palsu. **Live authenticated check dan live write smoke masih BLOCKED** karena `GITHUB_TOKEN` belum tersedia di environment lokal. Dokumen ini menjelaskan implementasi aktual, batas operasi tulis, kontrak UC04–UC05, dan langkah verifikasi. Ringkasan status terbaru ada di bagian 0; bagian 1–8 dipertahankan sebagai catatan Week 1 dan telah diberi koreksi status.
 
 Acuan resmi:
 
 - SRS §4.6 UC04 “Mengerjakan Maintenance Issue” (FR-UC04-01..11; BR-13..15).
 - SRS §4.7 UC05 “Mengajukan Pull Request” (FR-UC05-01..14; BR-16..18).
 - [Arsitektur](ARCHITECTURE.md) §4, §5, §8 dan [Delta PDM Sprint 1](artifacts/shared/pdm-delta-sprint1.md).
-- Kontrak endpoint dan fixture: [contracts/uc04-uc05-api.md](../contracts/uc04-uc05-api.md).
+- Kontrak endpoint dan fixture Week 1: [contracts/uc04-uc05-api.md](../contracts/uc04-uc05-api.md).
+- Kontrak endpoint nyata: [contracts/uc04-uc05-real-api.md](../contracts/uc04-uc05-real-api.md).
+- Dokumentasi implementasi, bukti uji, traceability, dan handoff: [UC04_UC05_BACKEND.md](UC04_UC05_BACKEND.md).
+
+## 0. Pembaruan implementasi — 4 November 2026
+
+Bagian 1–8 di bawah adalah catatan Week 1 dan tetap dipertahankan sebagai riwayat. Status aktual setelah W13-01:
+
+| Area | Status aktual | Bukti |
+| --- | --- | --- |
+| Klaim issue UC04 | Nyata, atomik, persisten | `/maintenance-backlogs/{issue}/claim` |
+| Verifikasi push manual | Nyata, membaca branch/commit GitHub | `/maintenance-backlogs/{issue}/push-verifications` |
+| Webhook push | Nyata, HMAC + ledger delivery + validasi aktor | `POST /webhooks/github` |
+| Buat Pull Request | Nyata, `POST /repos/{owner}/{repo}/pulls` | `/maintenance-backlogs/{issue}/pull-requests` |
+| Metadata PR | Persisten di tabel `pull_request` | Migration `2026_11_04_000004` |
+| Idempotensi | Fingerprint + `Idempotency-Key` + unique head tuple | `PullRequestService` |
+| Rekonsiliasi | Endpoint + `github:reconcile-pull-requests` | Tanpa membuat PR baru |
+| Live authenticated check | **BLOCKED** — `GITHUB_TOKEN` belum tersedia | `github:check`, `github:smoke-uc05` |
+| Mock Week 1 | Tetap aktif hanya di local/testing | `/developer/github-mock/*` |
+
+Perubahan skema: `github_repository`, `pull_request`, `github_webhook_delivery`; kolom `maintenance_backlog.repository_id`, `last_push_sha`, `last_push_at`; `source_branch` diperlebar ke 255; `pengguna_sistem.github_login` nullable unique. Token tetap **hanya** di environment, tidak disimpan di database.
+
+Hasil verifikasi terakhir: 231 test (230 lulus, 1 skipped pre-existing, 1.143 assertions); 82 test UC04/UC05 baru semuanya lulus. Tidak ada PR nyata yang dibuat dalam pengujian otomatis. Live write test belum boleh diklaim PASS. Detail lengkap ada di [UC04_UC05_BACKEND.md](UC04_UC05_BACKEND.md).
 
 ## 1. Alur koneksi
 
@@ -16,6 +38,7 @@ flowchart LR
     FE[Next.js / browser]
     API[Laravel API]
     CONN[GitHubConnectionController]
+    UC[MaintenanceIssue / PullRequest]
     SVC[GitHubService adapter]
     MOCK[GitHubMockController UC04-UC05]
     FIX[(Fixture deterministik)]
@@ -24,8 +47,11 @@ flowchart LR
 
     FE -->|session cookie + CSRF| API
     API --> CONN
+    API --> UC
     CONN --> SVC
-    SVC -->|GET /repos/owner/repo| GH
+    UC --> SVC
+    SVC -->|GET repos/branches/commits| GH
+    SVC -->|POST /pulls| GH
     SVC -->|Bearer token dari env server| GH
     GH -->|metadata / 401 / 403 / 429 / 5xx| SVC
     SVC -->|status internal yang aman| CONN
@@ -37,10 +63,10 @@ flowchart LR
     MOCK -.->|TIDAK memanggil GitHub| GH
 
     DEV -.->|event push/PR| GH
-    GH -.->|webhook belum diimplementasikan| API
+    GH -->|signed webhook push| API
 ```
 
-Frontend tidak pernah menerima token GitHub. Token hanya dibaca oleh Laravel dari environment server. Garis putus-putus menunjukkan mock/stub dan alur yang belum aktif; tidak ada operasi tulis GitHub yang dijalankan oleh fitur ini.
+Frontend tidak pernah menerima token GitHub. Token hanya dibaca oleh Laravel dari environment server. Garis putus-putus menunjukkan mock Week 1 yang tetap aktif hanya di local/testing. Operasi tulis **ke GitHub** hanya terjadi pada alur UC05 setelah seluruh validasi lulus; webhook push hanya membaca branch/commit GitHub lalu menulis status ke database. Tidak ada endpoint untuk melakukan `git push` karena perubahan source code tetap dilakukan di luar MaintainGov.
 
 ## 2. Konfigurasi
 
@@ -51,14 +77,18 @@ Tambahkan variabel berikut pada `apps/api/.env` lokal atau secret manager. Janga
 | `GITHUB_API_URL` | `https://api.github.com` | Base URL GitHub REST API. |
 | `GITHUB_REPOSITORY_OWNER` | `AgilePemdigi-2026` | Owner repository utama. |
 | `GITHUB_REPOSITORY_NAME` | `MaintainGov` | Nama repository utama. |
-| `GITHUB_TOKEN` | kosong | Token server-side untuk operasi baca. Wajib untuk pemeriksaan terautentikasi. |
+| `GITHUB_DEFAULT_BRANCH` | `main` | Branch tujuan default dan branch yang dilindungi dari klaim. |
+| `GITHUB_TOKEN` | kosong | Token server-side untuk baca metadata/branch/commit dan tulis Pull Request. Wajib untuk operasi nyata. |
 | `GITHUB_TIMEOUT` | `10` | Timeout request (detik). |
 | `GITHUB_CONNECT_TIMEOUT` | `5` | Timeout koneksi (detik). |
+| `GITHUB_WEBHOOK_SECRET` | kosong | HMAC secret `X-Hub-Signature-256`; kosong berarti webhook ditolak 503. |
+| `GITHUB_WEBHOOK_MAX_AGE` | `900` | Umur maksimum delivery push (detik); `0` menonaktifkan cek. |
+| `GITHUB_PR_STALE_SECONDS` | `60` | Umur minimum baris PR `pending` sebelum aman direkonsiliasi/di-retry. |
 | `GITHUB_MOCK_ENABLED` | aktif saat `local`/`testing` | Mengaktifkan route mock UC04–UC05. Route mengembalikan 404 saat nonaktif. |
 
-Implementasi saat ini memakai **Bearer token** (`GITHUB_TOKEN`). Ini dapat berupa fine-grained personal access token dengan izin baca metadata repository, atau mekanisme token lain yang disetujui tim. **GitHub App JWT/installation-token exchange belum diimplementasikan** karena kredensial App dan izinnya belum diverifikasi (D09). Jangan menganggap App sudah aktif.
+Implementasi saat ini memakai **Bearer token** (`GITHUB_TOKEN`). Ini dapat berupa fine-grained personal access token, atau mekanisme token lain yang disetujui tim. **GitHub App JWT/installation-token exchange belum diimplementasikan** karena kredensial App dan izinnya belum diverifikasi (D09). Jangan menganggap App sudah aktif.
 
-Izin minimum yang dituju untuk pemeriksaan ini adalah **repository metadata: read**. Izin tulis (contents write, pull request write) tidak diminta dan tidak dipakai oleh fitur ini. Izin aktual baru dapat dinyatakan terverifikasi setelah live check berhasil dengan token.
+Izin minimum yang dibutuhkan implementasi UC04/UC05 adalah **Metadata: read**, **Contents: read**, dan **Pull requests: write** pada repository target. Izin aktual belum dinyatakan terverifikasi karena live check masih BLOCKED. Token tidak boleh dikirim ke browser atau disimpan di database.
 
 Jika token belum tersedia, adapter tidak mengirim request dan mengembalikan status aman `unavailable` dengan kode `GITHUB_NOT_CONFIGURED`.
 
@@ -85,7 +115,7 @@ Rate limit tidak disimpulkan dari semua respons 403. Adapter memeriksa `X-RateLi
 
 Contoh sukses ada di [`contracts/fixtures/uc04-uc05/connection-success.json`](../contracts/fixtures/uc04-uc05/connection-success.json). Contoh error tersedia untuk unauthorized, forbidden, rate-limited, unavailable, not-found, dan not-configured pada folder fixture yang sama.
 
-## 4. Pengujian live read-only
+## 4. Pengujian live (read-only default)
 
 Perintah manual:
 
@@ -102,6 +132,15 @@ Perilaku:
 
 Token tidak pernah dicetak. Jangan memakai unit test mock sebagai bukti koneksi live.
 
+Pemeriksaan live UC05 tanpa efek samping:
+
+```bash
+cd apps/api
+php artisan github:smoke-uc05 --issue={backlog_id} --branch={source_branch}
+```
+
+Perintah ini hanya membaca koneksi, branch, commit, dan PR yang sudah ada. Opsi `--require-write` membuat perintah gagal bila respons repository tidak melaporkan permission `push`; ini hanya memeriksa permission yang dilaporkan GitHub, bukan bukti PR berhasil dibuat. Perintah ini tidak pernah membuat PR. Rekonsiliasi operasional memakai `php artisan github:reconcile-pull-requests` (`--dry-run` tidak memanggil GitHub). Status live tetap **BLOCKED** sampai token dan izin tersedia.
+
 **Hasil pemeriksaan 1 November 2026:**
 
 - `php artisan github:check` → **BLOCKED**: `GITHUB_TOKEN` belum dikonfigurasi; tidak ada request jaringan.
@@ -109,9 +148,11 @@ Token tidak pernah dicetak. Jangan memakai unit test mock sebagai bukti koneksi 
 - Pemeriksaan publik ini hanya membuktikan repository dapat dibaca tanpa token. **Status autentikasi dan permissions tetap BLOCKED.**
 - Tidak ada operasi tulis, commit, branch, atau PR yang dilakukan.
 
-## 5. Kontrak UC04–UC05 dan mock backend
+## 5. Kontrak UC04–UC05: endpoint nyata dan mock Week 1
 
-Kontrak lengkap: [contracts/uc04-uc05-api.md](../contracts/uc04-uc05-api.md). Ringkasan route mock:
+Kontrak endpoint nyata: [contracts/uc04-uc05-real-api.md](../contracts/uc04-uc05-real-api.md). Route produksi berada di `/api/v1/developer/maintenance-issues`, `/api/v1/maintenance-backlogs/{issue}/claim`, `/api/v1/maintenance-backlogs/{issue}/push-status`, `/api/v1/maintenance-backlogs/{issue}/push-verifications`, `/api/v1/maintenance-backlogs/{issue}/branches`, `/api/v1/maintenance-backlogs/{issue}/pull-requests`, `/api/v1/maintenance-backlogs/{issue}/pull-requests/reconcile`, `/api/v1/pull-requests/{pullRequest}`, dan `/api/v1/webhooks/github`. Detail alur, idempotensi, rekonsiliasi, dan error ada di [UC04_UC05_BACKEND.md](UC04_UC05_BACKEND.md).
+
+Kontrak mock Week 1 tetap dipertahankan dan tidak diubah: [contracts/uc04-uc05-api.md](../contracts/uc04-uc05-api.md). Ringkasan route mock:
 
 | Method/path | Kegunaan | Tipe |
 | --- | --- | --- |
@@ -127,16 +168,19 @@ Semua respons mock memiliki header `X-Mock-Data: true` dan `meta.is_mock=true`. 
 
 Stub PR tidak menggantikan pemeriksaan koneksi. Frontend tetap wajib memanggil `GET /github/connection` sebelum menampilkan formulir (FR-UC05-03). Jika gagal, tampilkan persis “Koneksi GitHub tidak tersedia, pengajuan belum diproses” dan jangan mengubah status issue (FR-UC05-04). Karena endpoint koneksi bersifat nyata, alur sukses end-to-end tetap membutuhkan `GITHUB_TOKEN`; mock hanya membantu membangun state UI.
 
-Operasi push tidak dibuat sebagai endpoint tulis karena SRS §4.6.1 menyatakan perubahan source code dilakukan di luar MaintainGov. `push-status` hanya membaca status mock. Integrasi webhook push/PR belum diimplementasikan.
+Operasi push tidak dibuat sebagai endpoint tulis karena SRS §4.6.1 menyatakan perubahan source code dilakukan di luar MaintainGov. `push-status` hanya membaca status. Integrasi webhook push dan pembuatan PR nyata **sudah diimplementasikan di route produksi** (bukan di mock); lihat bagian 0 dan kontrak nyata. Mock tetap tidak memanggil GitHub dan tidak menyimpan data.
 
 ## 6. Batas implementasi dan keputusan terbuka
 
-- Live authenticated check membutuhkan `GITHUB_TOKEN` yang sah; belum tersedia.
-- GitHub App belum diverifikasi; mekanisme token saat ini tidak boleh diklaim sebagai App.
-- Kontrak mock memakai namespace sementara `/developer/github-mock` agar tidak bertabrakan dengan route UC02/UC03. Path final mengikuti arsitektur (`/maintenance-backlogs/...`) setelah tabel dan kontrak UC03 disepakati.
-- Tabel `maintenance_backlog`, `github_repository`, `pull_request`, dan `code_review` belum ada. Kebutuhan field ada di [GITHUB_DATABASE_HANDOFF.md](GITHUB_DATABASE_HANDOFF.md); belum ada migration yang dibuat.
-- Webhook signature, deduplikasi delivery ID, pencarian PR setelah timeout, dan operasi tulis PR adalah pekerjaan lanjutan, bukan bagian dari Feature 9 ini.
-- Status `Ready for Merge`, `Closed`, dan `Merged` serta pemetaan reviewer GitHub (UC06) belum diimplementasikan.
+Status per 4 November 2026:
+
+- Live authenticated check dan live write smoke membutuhkan `GITHUB_TOKEN` yang sah; token belum tersedia sehingga statusnya **BLOCKED**, bukan PASS.
+- GitHub App belum diverifikasi; mekanisme token saat ini adalah Bearer token dan tidak boleh diklaim sebagai GitHub App.
+- Namespace mock `/developer/github-mock` tetap dipertahankan untuk demo tanpa kredensial. Path produksi `/maintenance-backlogs/...`, `/developer/maintenance-issues`, `/pull-requests/...`, dan `/webhooks/github` sudah diimplementasikan tanpa mengubah kontrak mock.
+- Tabel `github_repository`, `pull_request`, dan `github_webhook_delivery` sudah dibuat; `maintenance_backlog` mendapat `repository_id`, `last_push_sha`, `last_push_at`; `pengguna_sistem.github_login` ditambahkan. Detail final ada di [GITHUB_DATABASE_HANDOFF.md](GITHUB_DATABASE_HANDOFF.md).
+- Signature webhook, deduplikasi delivery ID, replay/staleness, verifikasi push manual/webhook, pembuatan PR nyata, idempotensi, dan rekonsiliasi **sudah diimplementasikan dan diuji dengan GitHub palsu**. Bukti live tetap BLOCKED.
+- Status `Ready for Merge`, `Closed`, dan `Merged`, serta pemetaan reviewer dan review/approve/merge UC06, belum diimplementasikan dan tetap di luar scope.
+- UI frontend belum diimplementasikan/diverifikasi terhadap endpoint nyata; handoff ada di [UC04_UC05_BACKEND.md](UC04_UC05_BACKEND.md) §11.
 
 ## 7. Pengujian otomatis
 
@@ -145,9 +189,12 @@ cd apps/api
 php artisan test --compact tests/Unit/GitHubServiceTest.php
 php artisan test --compact tests/Feature/GitHubConnectionTest.php
 php artisan test --compact tests/Feature/GitHubMockContractTest.php
+php artisan test --compact tests/Feature/MaintenanceIssueClaimTest.php tests/Feature/PushVerificationTest.php tests/Feature/GitHubWebhookTest.php tests/Feature/PullRequestCreationTest.php tests/Feature/Uc04Uc05FlowTest.php tests/Feature/GitHubUc04Uc05CommandsTest.php
 ```
 
 Seluruh unit test adapter memakai `Http::fake`/`Http::preventStrayRequests`, sehingga tidak membutuhkan internet atau token. Feature test memakai sesi Laravel dan mock HTTP yang sama.
+
+Hasil 4 November 2026: full suite **231 test, 230 lulus, 1 skipped pre-existing, 1.143 assertions**; 82 test UC04/UC05 baru semuanya lulus (429 assertions). Rincian per file ada di [UC04_UC05_BACKEND.md](UC04_UC05_BACKEND.md) §9.
 
 ## 8. Langkah QA untuk Gerard
 
@@ -173,5 +220,6 @@ Langkah:
 10. Set `GITHUB_MOCK_ENABLED=false`, bersihkan config cache, lalu ulangi route mock; pastikan HTTP 404.
 11. Periksa Network tab: tidak boleh ada request langsung dari browser ke GitHub dan tidak boleh ada nilai token pada request/response.
 12. Setelah `GITHUB_TOKEN` tersedia, jalankan `php artisan github:check`. Baru setelah itu status autentikasi dan permission boleh dicatat sebagai terverifikasi.
+13. Untuk pengujian alur nyata (klaim → verifikasi push → PR → rekonsiliasi), gunakan checklist di [UC04_UC05_BACKEND.md](UC04_UC05_BACKEND.md) §11.2. Langkah mock di atas tidak boleh dipakai sebagai bukti PR nyata.
 
 Bukti yang perlu dicatat: tanggal/waktu, role yang dipakai, HTTP status, `error.code`, header `X-Mock-Data`, dan ada/tidaknya request ke GitHub. Jangan memakai screenshot mock sebagai bukti PR atau push nyata.

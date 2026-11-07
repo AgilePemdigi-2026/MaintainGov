@@ -142,7 +142,9 @@ Bantuan lintas anggota diperbolehkan. Pembagian ini menunjukkan tanggung jawab f
 | :--- | :--- |
 | [Setup UC01](docs/SETUP_UC01.md) | Menjalankan alur aplikasi terintegrasi |
 | [Integrasi dan pengujian](docs/UC01_INTEGRATION.md) | Kontrak, persistensi, kegagalan dan bukti lokal |
-| [Integrasi GitHub](docs/GITHUB_INTEGRATION.md) | Koneksi read-only, status error, mock UC04–UC05 dan batas integrasi |
+| [Integrasi GitHub](docs/GITHUB_INTEGRATION.md) | Koneksi, status error, webhook, endpoint nyata UC04–UC05, mock Week 1, dan batas verifikasi |
+| [Backend UC04–UC05](docs/UC04_UC05_BACKEND.md) | Implementasi klaim/push/PR, bukti uji, traceability, dan handoff |
+| [Kontrak API nyata UC04–UC05](contracts/uc04-uc05-real-api.md) | Endpoint, payload, error, idempotensi, rekonsiliasi, dan kontrak webhook |
 | [Master Plan](docs/MASTERPLAN.md) | Acuan keputusan dan pembagian tanggung jawab |
 | [Arsitektur](docs/ARCHITECTURE.md) | Komponen, rancangan API dan perubahan data |
 | [Tugas Week 10](docs/WEEK10_EXECUTION.md) | Urutan pekerjaan dan dependensi |

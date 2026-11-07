@@ -10,7 +10,10 @@ use Illuminate\Support\Facades\Validator;
 class MaintenanceBacklogController extends Controller
 {
     /** Writable fields: maintenance_case yang boleh diubah dari backlog (UC03). */
-    private const WRITABLE = ['ringkasan_masalah', 'modul', 'severity', 'priority_score'];
+    private const WRITABLE = [
+        'judul_issue', 'ringkasan_masalah', 'modul', 'fitur', 'severity',
+        'priority_score', 'recommendation',
+    ];
 
     /** Bucket priority label -> priority_score; menjaga urutan High > Medium > Low pada rentang skor model 0-10. */
     private const PRIORITY_SCORE = ['High' => 9.00, 'Medium' => 5.50, 'Low' => 2.00];
@@ -31,10 +34,12 @@ class MaintenanceBacklogController extends Controller
 
         $query = DB::table('maintenance_backlog as mb')
             ->join('maintenance_case as mc', 'mc.case_id', '=', 'mb.case_id')
+            ->leftJoin('pengguna_sistem as u', 'u.user_id', '=', 'mb.assigned_to')
             ->select('mb.backlog_id', 'mb.case_id', 'mb.status', 'mb.assigned_to', 'mb.assigned_at',
                 'mb.source_branch', 'mb.created_at', 'mb.updated_at',
                 'mc.judul_issue', 'mc.kategori', 'mc.modul', 'mc.fitur', 'mc.severity',
-                'mc.priority_score', 'mc.ringkasan_masalah', 'mc.status_validasi')
+                'mc.priority_score', 'mc.ringkasan_masalah', 'mc.status_validasi',
+                'u.nama as assignee_nama')
             // Prioritas label High > Medium > Low, lalu skor, lalu backlog_id (deterministik)
             ->orderByRaw("CASE LOWER(mc.severity) WHEN 'high' THEN 1 WHEN 'medium' THEN 2 WHEN 'low' THEN 3 ELSE 4 END, mc.priority_score DESC, mb.backlog_id ASC");
         if ($request->filled('status')) {
@@ -55,9 +60,10 @@ class MaintenanceBacklogController extends Controller
     {
         $backlog = DB::table('maintenance_backlog as mb')
             ->join('maintenance_case as mc', 'mc.case_id', '=', 'mb.case_id')
+            ->leftJoin('pengguna_sistem as u', 'u.user_id', '=', 'mb.assigned_to')
             ->select('mb.*', 'mc.judul_issue', 'mc.kategori', 'mc.modul', 'mc.fitur', 'mc.severity',
                 'mc.priority_score', 'mc.ringkasan_masalah', 'mc.recommendation', 'mc.status_validasi',
-                'mc.user_id', 'mc.validated_at', 'mc.created_at')
+                'mc.user_id', 'mc.validated_at', 'mc.created_at', 'u.nama as assignee_nama')
             ->where('mb.backlog_id', $id)->first();
         if ($backlog === null) {
             return response()->json([
@@ -74,7 +80,12 @@ class MaintenanceBacklogController extends Controller
     public function update(Request $request, int $id): JsonResponse
     {
         $validator = Validator::make($request->all(), [
+            'judul' => 'sometimes|string|max:255',
+            'judul_issue' => 'sometimes|string|max:255',
+            'fitur' => 'sometimes|string|max:100',
+            'recommendation' => 'sometimes|nullable|string',
             'priority' => 'sometimes|in:High,Medium,Low',
+            'priority_score' => 'sometimes|numeric|min:0|max:10',
             'severity' => 'sometimes|string|max:20',
             'modul' => 'sometimes|string|max:100',
             'ringkasan_masalah' => 'required|string',
@@ -86,19 +97,37 @@ class MaintenanceBacklogController extends Controller
             ], 422);
         }
 
-        $caseUpdate = array_filter([
+        $caseUpdate = [
             'ringkasan_masalah' => $request->string('ringkasan_masalah')->toString(),
-            'modul' => $request->filled('modul') ? $request->string('modul')->toString() : null,
-            'severity' => $request->filled('severity') ? $request->string('severity')->toString() : null,
-            'priority_score' => $request->filled('priority')
-                // TODO(decision D-W12-02-01): label priority dimap ke bucket tetap
-                // High=9.00 / Medium=5.50 / Low=2.00 dan MENGGANTIKAN skor model ML
-                // (intentional, tanpa kolom baru). Konfirmasi PO + perubahan skema
-                // tersendiri hanya bila keputusan berubah — lihat
-                // docs/artifacts/shared/pdm-delta-sprint2.md dan contracts/uc03-api.md.
-                ? self::PRIORITY_SCORE[(string) $request->string('priority')]
-                : null,
-        ], fn ($value) => $value !== null);
+        ];
+
+        if ($request->filled('judul') || $request->filled('judul_issue')) {
+            $caseUpdate['judul_issue'] = $request->string(
+                $request->filled('judul') ? 'judul' : 'judul_issue',
+            )->toString();
+        }
+        if ($request->filled('modul')) {
+            $caseUpdate['modul'] = $request->string('modul')->toString();
+        }
+        if ($request->filled('fitur')) {
+            $caseUpdate['fitur'] = $request->string('fitur')->toString();
+        }
+        if ($request->filled('severity')) {
+            $caseUpdate['severity'] = $request->string('severity')->toString();
+        }
+        if ($request->has('recommendation')) {
+            $recommendation = $request->input('recommendation');
+            $caseUpdate['recommendation'] = is_string($recommendation) && trim($recommendation) !== ''
+                ? trim($recommendation)
+                : null;
+        }
+        if ($request->filled('priority_score')) {
+            $caseUpdate['priority_score'] = (float) $request->input('priority_score');
+        } elseif ($request->filled('priority')) {
+            // Kompatibilitas kontrak UC03: label priority dimap ke bucket tetap
+            // High=9.00 / Medium=5.50 / Low=2.00 (D-W12-02-01).
+            $caseUpdate['priority_score'] = self::PRIORITY_SCORE[(string) $request->string('priority')];
+        }
 
         $payload = DB::transaction(function () use ($id, $caseUpdate) {
             $backlog = DB::table('maintenance_backlog')->where('backlog_id', $id)

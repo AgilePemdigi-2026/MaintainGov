@@ -37,7 +37,7 @@ function IssueList() {
     let active = true;
     setLoading(true);
     setError(null);
-    sprint2Api.listBacklogs({ status, search, page })
+    sprint2Api.listIssues({ status, search, page })
       .then(data => { if (active) setResult(data); })
       .catch(err => { if (active) setError(handleError(err, "Daftar Maintenance Issue tidak dapat dimuat.")); })
       .finally(() => { if (active) setLoading(false); });
