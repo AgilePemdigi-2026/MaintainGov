@@ -8,7 +8,7 @@ import { useParams } from "next/navigation";
 import { ApiError } from "@/lib/api";
 import { RoleGate, useSession } from "@/components/workspace/session";
 import { Alert, EmptyState, ErrorState, InfoRow, PageHeader, SkeletonRows } from "@/components/workspace/ui";
-import { sprint2Api } from "@/lib/sprint2/client";
+import { githubSprint2, isMockMode, sprint2Api } from "@/lib/sprint2/client";
 import { MESSAGES, backlogCode } from "@/lib/sprint2/labels";
 import type { MaintenanceBacklog, PullRequestInfo, PullRequestOptions } from "@/lib/sprint2/types";
 
@@ -52,6 +52,7 @@ function PullRequestForm() {
       const ready = data.status === "Ready for Pull Request" && !!data.last_push;
       if (!ready || data.pull_request) { setOptions(null); return; }
       try {
+        if (!isMockMode) await githubSprint2.checkConnection();
         const opts = await sprint2Api.getPullRequestOptions(id);
         if (!active) return;
         setOptions(opts);

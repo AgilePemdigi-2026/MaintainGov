@@ -34,7 +34,7 @@ class GitHubSmokeUc05 extends Command
             $this->error('BLOCKED: GITHUB_TOKEN belum dikonfigurasi. Tidak ada request jaringan yang dijalankan.');
             $this->line('Isi GITHUB_TOKEN lewat .env lokal/secret manager, lalu jalankan ulang perintah ini.');
 
-            return self::SUCCESS;
+            return self::FAILURE;
         }
 
         $issueOption = $this->option('issue');
@@ -64,7 +64,7 @@ class GitHubSmokeUc05 extends Command
             if ($connection->errorCode === 'GITHUB_NOT_CONFIGURED') {
                 $this->error('BLOCKED: kredensial GitHub belum lengkap. Tidak ada write test yang dijalankan.');
 
-                return self::SUCCESS;
+                return self::FAILURE;
             }
 
             $this->error(sprintf(

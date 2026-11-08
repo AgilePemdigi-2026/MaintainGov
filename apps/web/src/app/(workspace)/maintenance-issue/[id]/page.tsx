@@ -9,7 +9,7 @@ import { RoleGate, useSession } from "@/components/workspace/session";
 import {
   Alert, BacklogStatusPill, EmptyState, ErrorState, InfoRow, PageHeader, SeverityBadge, SkeletonRows, Toast,
 } from "@/components/workspace/ui";
-import { sprint2Api } from "@/lib/sprint2/client";
+import { githubSprint2, isMockMode, sprint2Api } from "@/lib/sprint2/client";
 import { MESSAGES, backlogCode, caseCode, formatDateTime, priorityLabel } from "@/lib/sprint2/labels";
 import type { MaintenanceBacklog } from "@/lib/sprint2/types";
 
@@ -29,6 +29,10 @@ function IssueDetail() {
   const [taken, setTaken] = useState(false);
   const [claimError, setClaimError] = useState<string | null>(null);
   const [toast, setToast] = useState(false);
+  const [verifying, setVerifying] = useState(false);
+  const verifyRef = useRef(false);
+  const [verifyError, setVerifyError] = useState<string | null>(null);
+  const [verifySuccess, setVerifySuccess] = useState(false);
 
   useEffect(() => {
     if (!validId) return;
@@ -72,6 +76,25 @@ function IssueDetail() {
     }
   };
 
+  // Recovery path when the GitHub webhook cannot reach localhost.
+  const verifyLatestPush = async () => {
+    if (verifyRef.current || !validId) return;
+    verifyRef.current = true;
+    setVerifying(true);
+    setVerifyError(null);
+    setVerifySuccess(false);
+    try {
+      await githubSprint2.verifyPush(id);
+      setIssue(await sprint2Api.getIssue(id));
+      setVerifySuccess(true);
+    } catch (err) {
+      setVerifyError(handleError(err, 'Push belum dapat diverifikasi. Periksa branch dan koneksi GitHub.'));
+    } finally {
+      verifyRef.current = false;
+      setVerifying(false);
+    }
+  };
+
   if (notFound) {
     return (
       <div className="ws-content">
@@ -110,6 +133,25 @@ function IssueDetail() {
         }
       />
       {claimError && <Alert tone="error" title={claimError} onClose={() => setClaimError(null)} />}
+      {verifyError && <Alert tone="error" title={verifyError} onClose={() => setVerifyError(null)} />}
+      {verifySuccess && <Alert tone="success" title="Push telah diverifikasi dari GitHub." />}
+      {isAssignee && !isMockMode && (
+        <section className="ws-card" aria-label="Verifikasi push GitHub">
+          <div className="ws-card__head"><h2 className="ws-card__title">Integrasi GitHub</h2></div>
+          <div className="ws-card__body">
+            <p>Branch kerja: <code>{issue.source_branch ?? '-'}</code>. Lakukan commit dan push di GitHub dahulu. Verifikasi mengambil HEAD branch dari GitHub, bukan mempercayai input browser.</p>
+            <div className="ws-actions">
+              {(issue.status === 'Sedang Dikerjakan' || issue.status === 'Ready for Pull Request') && !issue.pull_request &&
+                <button className="ws-btn ws-btn--primary" type="button" onClick={verifyLatestPush} disabled={verifying}>
+                  {verifying ? 'Memverifikasi...' : 'Verifikasi push GitHub'}
+                </button>}
+              <button className="ws-btn ws-btn--outline" type="button" onClick={retry} disabled={verifying}>
+                Refresh status issue
+              </button>
+            </div>
+          </div>
+        </section>
+      )}
       <div className="ws-grid">
         <div className="ws-stack">
           <section className="ws-card" aria-label="Spesifikasi issue">
