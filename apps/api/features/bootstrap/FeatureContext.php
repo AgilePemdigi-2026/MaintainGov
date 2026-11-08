@@ -24,6 +24,8 @@ final class FeatureContext implements Context
     private ?string $lastKey = null;
     private array $savedIds = [];
     private array $batchData = [];
+    private ?int $sprint2BacklogId = null;
+    private ?string $sprint2EditedSummary = null;
 
     private function baseUrl(): string
     {
@@ -283,6 +285,70 @@ final class FeatureContext implements Context
         if ($this->batchId !== $oldBatchId) {
             throw new RuntimeException('Duplicate upload created a second batch.');
         }
+    }
+
+    #[When('I validate the first newly generated case as Valid and edit the backlog')]
+    public function validateNewCaseAndEdit(): void
+    {
+        $cases = $this->batchData['cases'] ?? [];
+        if (!$cases) throw new RuntimeException('UC01 did not create cases');
+        $caseId = (int) $cases[0]['case_id'];
+        $this->send('GET', 'maintenance-cases/' . $caseId);
+        $this->requireStatus(200);
+        $sourceReviews = $this->responseJson()['data']['reviews'] ?? [];
+        if (!$sourceReviews) throw new RuntimeException('UC02 case has no source reviews');
+        $this->send('POST', 'maintenance-cases/' . $caseId . '/validate', ['keputusan' => 'Ya']);
+        $this->requireStatus(200);
+        $validated = $this->responseJson()['data'];
+        if (($validated['status_validasi'] ?? '') !== 'Valid' || empty($validated['backlog_id']))
+            throw new RuntimeException('UC02 did not create a Valid case/backlog');
+        $this->sprint2BacklogId = (int) $validated['backlog_id'];
+        $this->sprint2EditedSummary = 'BDD sprint2 persisted summary for backlog ' . $this->sprint2BacklogId;
+        $this->send('PATCH', 'maintenance-backlog/' . $this->sprint2BacklogId,
+            ['ringkasan_masalah' => $this->sprint2EditedSummary, 'priority_score' => 5.5]);
+        $this->requireStatus(200);
+    }
+
+    #[Then('the sprint2 backlog persists with status :expected')]
+    public function sprint2BacklogPersisted(string $expected): void
+    {
+        if ($this->sprint2BacklogId === null) throw new RuntimeException('No UC02 backlog');
+        $this->send('GET', 'maintenance-backlog/' . $this->sprint2BacklogId);
+        $this->requireStatus(200);
+        $item = $this->responseJson()['data'];
+        if (($item['status'] ?? '') !== $expected ||
+            ($item['ringkasan_masalah'] ?? '') !== $this->sprint2EditedSummary)
+            throw new RuntimeException('UC03 PATCH not persisted or status is incorrect');
+    }
+
+    #[When('I log out and log in as developer for sprint2')]
+    public function switchToSprint2Developer(): void
+    {
+        $this->send('POST', 'auth/logout', []);
+        $this->requireStatus(200);
+        $this->login('developer');
+    }
+
+    #[When('I claim that sprint2 backlog')]
+    public function claimSprint2Backlog(): void
+    {
+        if ($this->sprint2BacklogId === null) throw new RuntimeException('No backlog to claim');
+        $this->send('POST', 'maintenance-backlogs/' . $this->sprint2BacklogId . '/claim', []);
+        $this->requireStatus(200);
+        $item = $this->responseJson()['data'];
+        if (($item['status'] ?? '') !== 'Sedang Dikerjakan' || empty($item['assigned_to']['user_id']))
+            throw new RuntimeException('UC04 claim did not persist');
+    }
+
+    #[Then('that sprint2 issue is assigned and awaiting GitHub push')]
+    public function sprint2IssueAwaitingPush(): void
+    {
+        $this->send('GET', 'maintenance-backlogs/' . $this->sprint2BacklogId . '/push-status');
+        $this->requireStatus(200);
+        $item = $this->responseJson()['data'];
+        if (($item['verified'] ?? true) !== false ||
+            ($item['issue_status'] ?? '') !== 'Sedang Dikerjakan')
+            throw new RuntimeException('Issue status falsely advanced before GitHub push');
     }
 
     #[Then('the persisted review and case identifiers remain unchanged')]

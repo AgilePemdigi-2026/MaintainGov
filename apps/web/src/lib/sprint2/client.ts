@@ -122,13 +122,18 @@ const asNumber = (value: unknown, fallback = 0): number => {
 };
 
 function mapPullRequest(row: BackendPullRequestRow): PullRequestInfo {
+  // Never silently classify pending/failed submissions as a successful PR.
+  const number = asNumber(row.github_pr_number ?? row.pull_request_number);
+  const url = String(row.github_pr_url ?? row.pull_request_url ?? row.url ?? '');
+  if (number <= 0 || !/^https:\/\/github\.com\//.test(url))
+    throw new Error('GitHub belum mengonfirmasi nomor dan URL Pull Request.');
   const rawStatus = String(row.lifecycle_state ?? row.status ?? row.submission_state ?? "open").toLowerCase();
   const status = rawStatus === "merged" ? "Merged" : rawStatus === "closed" ? "Closed" : "Open";
 
   return {
     pr_id: asNumber(row.pull_request_id ?? row.pr_id),
-    github_pr_number: asNumber(row.github_pr_number ?? row.pull_request_number),
-    url: String(row.github_pr_url ?? row.pull_request_url ?? row.url ?? ""),
+    github_pr_number: number,
+    url,
     judul: String(row.title ?? row.judul ?? ""),
     source_branch: String(row.source_branch ?? ""),
     target_branch: String(row.target_branch ?? ""),
@@ -215,7 +220,8 @@ function mapIssue(row: BackendIssueRow): MaintenanceBacklog {
 function mapBranchOptions(data: BackendBranches): PullRequestOptions {
   return {
     source_branch: String(data.source_branch ?? ""),
-    target_branches: (data.branches ?? []).map(branch => branch.name),
+    target_branches: (data.branches ?? []).map(branch => branch.name)
+      .filter(name => name !== data.source_branch),
     default_target: data.suggested_target_branch ?? data.default_branch ?? null,
     repository: String(data.repository?.full_name ?? ""),
   };
@@ -237,7 +243,14 @@ async function fetchIssue(id: number): Promise<MaintenanceBacklog> {
       const { data: pullRequests } = await apiFetch<{ data: BackendPullRequestRow[] }>(
         `/maintenance-backlogs/${id}/pull-requests`,
       );
-      if (pullRequests.length > 0) issue.pull_request = mapPullRequest(pullRequests[0]);
+      // A failed/pending submission is NOT a real GitHub PR. Do not lock the UI
+      // behind a fake 'Open' PR with number 0 on reload.
+      const existing = pullRequests.find(row =>
+        row.submission_state === 'created' &&
+        Number(row.github_pr_number ?? row.pull_request_number ?? 0) > 0 &&
+        !!(row.github_pr_url ?? row.pull_request_url ?? row.url),
+      );
+      if (existing) issue.pull_request = mapPullRequest(existing);
     } catch {
       // Metadata PR bersifat pelengkap; kegagalan baca tidak boleh menggagalkan detail issue.
     }
@@ -325,6 +338,29 @@ export const liveApi: Sprint2Api = {
       }),
     });
     return mapPullRequest(data);
+  },
+};
+
+/** Real GitHub operations. Always called via Laravel; token stays on the server. */
+export const githubSprint2 = {
+  async checkConnection(): Promise<void> {
+    const { data } = await apiFetch<{data: { status?: string }}>("/github/connection");
+    if (data.status !== 'connected') throw new Error('GitHub belum terhubung. Periksa token pada Laravel.');
+  },
+  async verifyPush(id: number): Promise<void> {
+    await apiFetch(`/maintenance-backlogs/${id}/push-verifications`, {
+      method: 'POST', ...json({}),
+    });
+  },
+  async getPushStatus(id: number): Promise<{verified: boolean; issue_status: string}> {
+    const { data } = await apiFetch<{data: {verified: boolean; issue_status: string}}>(
+      `/maintenance-backlogs/${id}/push-status`);
+    return data;
+  },
+  async reconcile(id: number): Promise<void> {
+    await apiFetch(`/maintenance-backlogs/${id}/pull-requests/reconcile`, {
+      method: 'POST', ...json({}),
+    });
   },
 };
 

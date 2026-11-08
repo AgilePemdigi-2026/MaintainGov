@@ -40,6 +40,9 @@ export async function mockApi(page: Page, user: (typeof USERS)[keyof typeof USER
     if (path === "/auth/csrf") return reply(200, { token: "test-csrf" });
     if (path === "/auth/me") return user ? reply(200, { data: user }) : reply(401, { message: "Unauthenticated." });
     if (path === "/auth/logout") return reply(204);
+    // PR UI performs a server-side authenticated connection preflight.
+    if (method === 'GET' && path === '/github/connection')
+      return reply(200, { data: { status: 'connected' } });
     const result = await handler({ method, path, query: url.searchParams, body, request });
     if (result) return reply(result.status ?? 200, result.body);
     return reply(404, { message: `Tidak ada mock untuk ${method} ${path}` });
