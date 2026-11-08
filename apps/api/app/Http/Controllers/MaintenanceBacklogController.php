@@ -21,7 +21,7 @@ class MaintenanceBacklogController extends Controller
     public function index(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'status' => 'sometimes|in:Ready for Development,Sedang Dikerjakan,Ready for Pull Request,Selesai',
+            'status' => 'sometimes|nullable|in:Ready for Development,Sedang Dikerjakan,Ready for Pull Request,Selesai',
             'page' => 'sometimes|integer|min:1',
             'per_page' => 'sometimes|integer|min:1|max:100',
         ]);

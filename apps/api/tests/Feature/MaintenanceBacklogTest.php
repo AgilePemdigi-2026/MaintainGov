@@ -229,6 +229,57 @@ class MaintenanceBacklogTest extends TestCase
         );
     }
 
+    public function test_patch_lalu_get_membaca_kembali_nilai_sama(): void
+    {
+        // W13-01: write-read verify — hasil PATCH harus terbaca kembali
+        // identik lewat GET detail (sumber bacaan frontend).
+        $ids = $this->buatBacklog(backlogOverride: ['updated_at' => '2020-01-01 00:00:00']);
+        $updatedAtAwal = DB::table('maintenance_backlog')
+            ->where('backlog_id', $ids['backlog_id'])->value('updated_at');
+
+        $payload = [
+            'judul' => 'Judul write-read verify',
+            'modul' => 'Modul verify',
+            'fitur' => 'Fitur verify',
+            'severity' => 'Medium',
+            'priority' => 'Medium',
+            'ringkasan_masalah' => 'Ringkasan write-read verify.',
+            'recommendation' => 'Rekomendasi verify.',
+        ];
+
+        $this->tim()->patchJson('/api/v1/maintenance-backlog/'.$ids['backlog_id'], $payload)
+            ->assertStatus(200)
+            ->assertJson(['success' => true, 'message' => 'Backlog diperbarui.']);
+
+        $response = $this->tim()->getJson('/api/v1/maintenance-backlog/'.$ids['backlog_id']);
+        $response->assertStatus(200);
+        $data = $response->json('data');
+
+        $this->assertSame($payload['judul'], $data['judul_issue']);
+        $this->assertSame($payload['modul'], $data['modul']);
+        $this->assertSame($payload['fitur'], $data['fitur']);
+        $this->assertSame($payload['severity'], $data['severity']);
+        $this->assertSame($payload['ringkasan_masalah'], $data['ringkasan_masalah']);
+        $this->assertSame($payload['recommendation'], $data['recommendation']);
+        // priority label Medium dimap ke bucket D-W12-02-01
+        $this->assertEquals(5.50, (float) $data['priority_score']);
+        // updated_at backlog berubah dan dibaca ulang oleh GET
+        $this->assertNotEquals($updatedAtAwal, $data['updated_at'],
+            'GET membaca updated_at backlog hasil PATCH via timestamps.');
+    }
+
+    public function test_list_status_kosong_menampilkan_semua_backlog(): void
+    {
+        // Hardening W13-01: ?status= (nilai kosong) bukan 422; status opsional
+        // berarti semua status tampil.
+        $this->buatBacklog();
+        $this->buatBacklog(backlogOverride: ['status' => 'Selesai']);
+
+        $this->tim()->getJson('/api/v1/maintenance-backlog?status=')
+            ->assertStatus(200)
+            ->assertJson(['success' => true, 'meta' => ['total' => 2]]);
+    }
+
     public function test_patch_status_sudah_dikerjakan_ditolak_409_br12(): void
     {
         $ids = $this->buatBacklog(backlogOverride: ['status' => 'Sedang Dikerjakan']);

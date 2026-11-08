@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Pengguna;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -25,7 +26,6 @@ class MaintenanceCaseValidationTest extends TestCase
     }
 
     /** ------------ Helper ------------ */
-
     private function buatPengguna(string $role): int
     {
         return DB::table('pengguna_sistem')->insertGetId([
@@ -73,11 +73,10 @@ class MaintenanceCaseValidationTest extends TestCase
 
     private function actingAsPengguna(string $aktor)
     {
-        return $this->actingAs(\App\Models\Pengguna::query()->findOrFail($this->akun[$aktor]));
+        return $this->actingAs(Pengguna::query()->findOrFail($this->akun[$aktor]));
     }
 
     /** ------------ List & detail ------------ */
-
     public function test_list_maintenance_cases_dengan_filter_status_pending(): void
     {
         $pending = $this->buatCase();
@@ -138,8 +137,31 @@ class MaintenanceCaseValidationTest extends TestCase
             ->assertJson(['success' => false, 'message' => 'Case tidak ditemukan.', 'data' => null]);
     }
 
-    /** ------------ Validasi Ya ------------ */
+    public function test_validate_case_tidak_ditemukan_404_tanpa_partial_write(): void
+    {
+        // W13-01: path 404 pada POST validate harus ber-envelope, tanpa
+        // menulis case maupun backlog.
+        $this->validasiSebagai('tim', 99999, 'Ya')->assertStatus(404)
+            ->assertJson(['success' => false, 'message' => 'Case tidak ditemukan.', 'data' => null]);
 
+        $this->assertSame(0, DB::table('maintenance_case')->count());
+        $this->assertSame(0, DB::table('maintenance_backlog')->count(),
+            'Validasi pada id asing tidak boleh membentuk backlog.');
+    }
+
+    public function test_list_status_kosong_menggunakan_default_pending(): void
+    {
+        // Hardening W13-01: ?status= (nilai kosong) bukan 422, melainkan
+        // fallback ke Pending sesuai kontrak default.
+        $this->buatCase();
+        $this->buatCase(override: ['status_validasi' => 'Valid', 'user_id' => $this->akun['tim'], 'validated_at' => now()]);
+
+        $this->actingAsPengguna('tim')->getJson('/api/v1/maintenance-cases?status=')
+            ->assertStatus(200)
+            ->assertJson(['success' => true, 'meta' => ['total' => 1]]);
+    }
+
+    /** ------------ Validasi Ya ------------ */
     public function test_keputusan_ya_membentuk_lima_kolom_wajib_dan_satu_backlog(): void
     {
         $caseId = $this->buatCase();
@@ -181,7 +203,6 @@ class MaintenanceCaseValidationTest extends TestCase
     }
 
     /** ------------ Validasi Tidak ------------ */
-
     public function test_keputusan_tidak_mengubah_status_tanpa_backlog(): void
     {
         $caseId = $this->buatCase();
@@ -206,11 +227,14 @@ class MaintenanceCaseValidationTest extends TestCase
 
         $this->validasiSebagai('tim', $caseId, 'Tidak')->assertStatus(409)
             ->assertJson(['success' => false]);
+        // Transisi terbalik Tidak Valid -> Valid juga harus ditolak: hanya
+        // case Pending yang dapat divalidasi, tanpa backlog terbentuk.
+        $this->validasiSebagai('tim', $caseId, 'Ya')->assertStatus(409)
+            ->assertJson(['success' => false]);
         $this->assertSame(0, DB::table('maintenance_backlog')->count());
     }
 
     /** ------------ Konflik unique & rollback ------------ */
-
     public function test_konflik_unique_mengembalikan_409_dan_mengembalikan_case_ke_pending(): void
     {
         $caseId = $this->buatCase();
@@ -239,7 +263,6 @@ class MaintenanceCaseValidationTest extends TestCase
     }
 
     /** ------------ Otorisasi ------------ */
-
     public function test_developer_ditolak_403(): void
     {
         $caseId = $this->buatCase();
@@ -267,8 +290,13 @@ class MaintenanceCaseValidationTest extends TestCase
     {
         $caseId = $this->buatCase();
 
-        $this->validasiSebagai('tim', $caseId, 'Mungkin')->assertStatus(422)
+        $response = $this->validasiSebagai('tim', $caseId, 'Mungkin');
+        $response->assertStatus(422)
             ->assertJson(['success' => false]);
+        // Detail kesalahan wajib Bahasa Indonesia dan menyebut field
+        $pesan = (array) $response->json('errors.keputusan');
+        $this->assertNotEmpty($pesan, 'Envelope 422 harus menyertakan errors per field.');
+        $this->assertStringContainsString('Nilai keputusan harus salah satu dari', (string) reset($pesan));
         $this->postJson("/api/v1/maintenance-cases/$caseId/validate", [])->assertStatus(422)
             ->assertJson(['success' => false]);
 
