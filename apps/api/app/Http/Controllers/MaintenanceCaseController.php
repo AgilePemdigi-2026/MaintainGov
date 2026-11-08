@@ -13,7 +13,7 @@ class MaintenanceCaseController extends Controller
     public function index(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'status' => 'sometimes|in:Pending,Valid,Tidak Valid',
+            'status' => 'sometimes|nullable|in:Pending,Valid,Tidak Valid',
             'page' => 'sometimes|integer|min:1',
             'per_page' => 'sometimes|integer|min:1|max:100',
         ]);
@@ -24,9 +24,15 @@ class MaintenanceCaseController extends Controller
             ], 422);
         }
 
-        // AC1 / FR-UC02-01: default daftar case Pending; ?status= opsional
+        // AC1 / FR-UC02-01: default daftar case Pending; ?status= opsional.
+        // Nilai kosong (mis. ?status=) diperlakukan sebagai default Pending,
+        // bukan 422 (hardening W13-01).
+        $status = $request->filled('status')
+            ? $request->string('status')->toString()
+            : 'Pending';
+
         $query = DB::table('maintenance_case')->orderBy('case_id')
-            ->where('status_validasi', $request->string('status', 'Pending'));
+            ->where('status_validasi', $status);
         $page = $query->paginate($request->integer('per_page', 25));
 
         return response()->json([
