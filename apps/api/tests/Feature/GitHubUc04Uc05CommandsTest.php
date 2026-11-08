@@ -36,7 +36,7 @@ class GitHubUc04Uc05CommandsTest extends Uc04Uc05TestCase
 
         $this->artisan('github:smoke-uc05')
             ->expectsOutputToContain('BLOCKED: GITHUB_TOKEN belum dikonfigurasi.')
-            ->assertSuccessful();
+            ->assertFailed();
 
         Http::assertNothingSent();
     }
