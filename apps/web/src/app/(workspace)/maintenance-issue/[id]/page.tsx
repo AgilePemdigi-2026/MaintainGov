@@ -11,7 +11,7 @@ import {
 } from "@/components/workspace/ui";
 import { githubSprint2, isMockMode, sprint2Api } from "@/lib/sprint2/client";
 import { MESSAGES, backlogCode, caseCode, formatDateTime, priorityLabel } from "@/lib/sprint2/labels";
-import type { MaintenanceBacklog } from "@/lib/sprint2/types";
+import type { BranchPreparation, MaintenanceBacklog } from "@/lib/sprint2/types";
 
 function IssueDetail() {
   const { user, handleError } = useSession();
@@ -29,6 +29,10 @@ function IssueDetail() {
   const [taken, setTaken] = useState(false);
   const [claimError, setClaimError] = useState<string | null>(null);
   const [toast, setToast] = useState(false);
+  const [branchNotice, setBranchNotice] = useState<BranchPreparation | null>(null);
+  const [branchError, setBranchError] = useState<string | null>(null);
+  const [preparingBranch, setPreparingBranch] = useState(false);
+  const prepareRef = useRef(false);
   const [verifying, setVerifying] = useState(false);
   const verifyRef = useRef(false);
   const [verifyError, setVerifyError] = useState<string | null>(null);
@@ -61,6 +65,7 @@ function IssueDetail() {
     try {
       const data = await sprint2Api.claimBacklog(id);
       setIssue(data);
+      setBranchNotice(data.branch_preparation ?? null);
       setToast(true);
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) {
@@ -76,6 +81,25 @@ function IssueDetail() {
     }
   };
 
+  // Recovery path when branch creation failed during claim or the page was
+  // reloaded before GitHub was reachable.
+  const prepareBranch = async () => {
+    if (prepareRef.current || !validId) return;
+    prepareRef.current = true;
+    setPreparingBranch(true);
+    setBranchError(null);
+    try {
+      const result = await sprint2Api.prepareBranch(id);
+      setBranchNotice(result);
+      setIssue(current => current ? { ...current, source_branch: current.source_branch ?? result.branch } : current);
+    } catch (err) {
+      setBranchError(handleError(err, "Branch GitHub belum dapat disiapkan. Coba lagi."));
+    } finally {
+      prepareRef.current = false;
+      setPreparingBranch(false);
+    }
+  };
+
   // Recovery path when the GitHub webhook cannot reach localhost.
   const verifyLatestPush = async () => {
     if (verifyRef.current || !validId) return;
@@ -86,6 +110,7 @@ function IssueDetail() {
     try {
       await githubSprint2.verifyPush(id);
       setIssue(await sprint2Api.getIssue(id));
+      setBranchNotice(null);
       setVerifySuccess(true);
     } catch (err) {
       setVerifyError(handleError(err, 'Push belum dapat diverifikasi. Periksa branch dan koneksi GitHub.'));
@@ -133,14 +158,29 @@ function IssueDetail() {
         }
       />
       {claimError && <Alert tone="error" title={claimError} onClose={() => setClaimError(null)} />}
+      {branchNotice?.status === "failed" && (
+        <Alert tone="warning" title={branchNotice.message}>
+          Branch <code>{branchNotice.branch}</code> belum dibuat di GitHub. Klaim issue tetap tersimpan; gunakan tombol “Siapkan branch GitHub” di bawah untuk mencoba lagi.
+        </Alert>
+      )}
+      {branchNotice && branchNotice.status !== "failed" && (
+        <Alert tone={branchNotice.status === "created" ? "success" : "info"} title={branchNotice.message}>
+          Branch <code>{branchNotice.branch}</code> {branchNotice.status === "created" ? "dibuat otomatis" : "sudah tersedia"} di GitHub. Commit dan push ke branch ini sebelum verifikasi.
+        </Alert>
+      )}
+      {branchError && <Alert tone="error" title={branchError} onClose={() => setBranchError(null)} />}
       {verifyError && <Alert tone="error" title={verifyError} onClose={() => setVerifyError(null)} />}
       {verifySuccess && <Alert tone="success" title="Push telah diverifikasi dari GitHub." />}
       {isAssignee && !isMockMode && (
         <section className="ws-card" aria-label="Verifikasi push GitHub">
           <div className="ws-card__head"><h2 className="ws-card__title">Integrasi GitHub</h2></div>
           <div className="ws-card__body">
-            <p>Branch kerja: <code>{issue.source_branch ?? '-'}</code>. Lakukan commit dan push di GitHub dahulu. Verifikasi mengambil HEAD branch dari GitHub, bukan mempercayai input browser.</p>
+            <p>Branch kerja: <code>{issue.source_branch ?? '-'}</code>. Branch dibuat otomatis saat issue diambil. Lakukan commit dan push ke branch ini, lalu verifikasi — aplikasi membaca HEAD branch dari GitHub, bukan mempercayai input browser.</p>
             <div className="ws-actions">
+              {(issue.status === 'Sedang Dikerjakan' || issue.status === 'Ready for Pull Request') && !issue.pull_request &&
+                <button className="ws-btn ws-btn--outline" type="button" onClick={prepareBranch} disabled={preparingBranch}>
+                  {preparingBranch ? 'Menyiapkan...' : 'Siapkan branch GitHub'}
+                </button>}
               {(issue.status === 'Sedang Dikerjakan' || issue.status === 'Ready for Pull Request') && !issue.pull_request &&
                 <button className="ws-btn ws-btn--primary" type="button" onClick={verifyLatestPush} disabled={verifying}>
                   {verifying ? 'Memverifikasi...' : 'Verifikasi push GitHub'}

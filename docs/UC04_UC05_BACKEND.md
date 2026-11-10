@@ -76,7 +76,8 @@ Komponen utama:
 
 | Komponen | Tanggung jawab |
 | --- | --- |
-| `MaintenanceIssueService` | List/detail, klaim atomik, status push, transisi status, lookup branch. |
+| `MaintenanceIssueService` | List/detail, klaim atomik, penyiapan branch, status push, transisi status, lookup branch. |
+| `BranchPreparationService` | Memastikan branch kerja ada di GitHub secara idempotent; kegagalan tidak membatalkan klaim. |
 | `PushVerificationService` | Verifikasi manual dan webhook terhadap branch/commit GitHub. |
 | `GitHubWebhookService` | Signature, deduplikasi, validasi repository/ref/SHA/umur, aktor, orkestrasi. |
 | `WebhookDeliveryService` | Ledger delivery, duplicate/replay/retry. |
@@ -120,6 +121,8 @@ sequenceDiagram
     participant API as MaintenanceIssueController
     participant S as MaintenanceIssueService
     participant R as GitHubRepositoryService
+    participant B as BranchPreparationService
+    participant GH as GitHub API
     participant DB as MySQL
 
     D->>API: POST /maintenance-backlogs/{id}/claim
@@ -139,7 +142,16 @@ sequenceDiagram
     else valid
         S->>DB: UPDATE ... WHERE assigned_to IS NULL AND status = Ready for Development
         S->>DB: COMMIT
-        API-->>D: 200 issue + assigned_to + assigned_at
+        S->>B: ensure(source_branch)
+        alt branch sudah ada
+            B->>GH: GET /repos/{owner}/{repo}/branches/{branch}
+            GH-->>B: commit.sha
+        else branch belum ada
+            B->>GH: POST /repos/{owner}/{repo}/git/refs
+            GH-->>B: ref + object.sha
+        end
+        B-->>S: branch_preparation (created/exists/failed)
+        API-->>D: 200 issue + assigned_to + branch_preparation
     end
 ```
 
@@ -148,9 +160,22 @@ Invariant:
 - `assigned_to` dan `assigned_at` diisi; `source_branch` diisi default `maintenance/issue-{id}` bila tidak dikirim.
 - Status berubah ke `Sedang Dikerjakan`.
 - Jika update bersyarat tidak mengenai tepat satu baris, klaim gagal `ISSUE_ALREADY_ASSIGNED`.
-- Klaim tidak memanggil GitHub.
+- Setelah transaksi commit, backend memastikan branch kerja ada di GitHub: branch dibaca lebih dulu, dibuat dari HEAD default branch bila belum ada, dan dianggap `exists` bila GitHub menjawab `Reference already exists`.
+- Penyiapan branch bersifat best-effort. GitHub gagal/timeout **tidak** membatalkan klaim: respons tetap `200` dengan `branch_preparation.status=failed` dan `error_code` yang aman.
+- Developer dapat mengulang penyiapan branch tanpa mengubah assignment melalui `POST /maintenance-backlogs/{issue}/branch`.
 
-### 5.2 Verifikasi push manual
+### 5.2 Penyiapan branch otomatis dan retry
+
+`BranchPreparationService::ensure()` dipanggil setelah transaksi klaim commit dan oleh endpoint retry. Urutannya:
+
+1. `GET /repos/{owner}/{repo}/branches/{branch}`. Bila ada → `exists`.
+2. Bila 404 → `GET` default branch untuk mengambil HEAD SHA.
+3. `POST /repos/{owner}/{repo}/git/refs` dengan `ref=refs/heads/{branch}` dan `sha=<HEAD default>`. Sukses → `created`.
+4. Bila GitHub menjawab `422 Reference already exists` → baca ulang branch. Bila ada → `exists` (aman untuk dua request bersamaan).
+
+Respons selalu berbentuk `{status, branch, commit_sha, message, error_code}`. Status `failed` tidak mengubah assignment/status issue. Endpoint retry hanya untuk assignee dan status `Sedang Dikerjakan`/`Ready for Pull Request`; error konfigurasi/izin GitHub dipetakan ke kode aman tanpa membocorkan body respons atau token.
+
+### 5.3 Verifikasi push manual
 
 ```mermaid
 sequenceDiagram
@@ -184,7 +209,7 @@ sequenceDiagram
 
 `GET /push-status` hanya membaca kolom. Tidak ada panggilan GitHub dan tidak ada mutasi.
 
-### 5.3 Webhook push
+### 5.4 Webhook push
 
 ```mermaid
 sequenceDiagram
@@ -395,7 +420,7 @@ Nama variabel (tanpa nilai):
 - `GITHUB_PR_STALE_SECONDS`
 - `GITHUB_MOCK_ENABLED`
 
-Token harus memiliki izin baca metadata/branch/commit dan izin **Pull requests: write** pada repository target. Izin aktual belum diverifikasi karena live check BLOCKED.
+Token harus memiliki izin baca metadata/branch/commit, izin **Contents: write** untuk membuat ref branch, dan izin **Pull requests: write** pada repository target. Izin aktual belum diverifikasi karena live check BLOCKED.
 
 ## 9. Bukti pengujian
 
@@ -426,7 +451,7 @@ Tidak ada kegagalan atau error pada suite akhir.
 
 | File | Fokus |
 | --- | --- |
-| `tests/Feature/MaintenanceIssueClaimTest.php` | Role, list/filter/order, detail, klaim sukses/gagal, branch, read-only, konfigurasi kosong. |
+| `tests/Feature/MaintenanceIssueClaimTest.php` | Role, list/filter/order, detail, klaim sukses/gagal, branch, penyiapan branch otomatis/exists/gagal, idempotensi 422, retry `/branch`, read-only, konfigurasi kosong. |
 | `tests/Feature/PushVerificationTest.php` | Bukti GitHub, SHA mismatch, non-assignee, status invalid, branch/commit hilang, error GitHub, rate limit. |
 | `tests/Feature/GitHubWebhookTest.php` | Signature, ping, event/ref invalid, repository mismatch, stale, duplicate, payload conflict, aktor, superseded, retry. |
 | `tests/Feature/PullRequestCreationTest.php` | Validasi, PR nyata (mocked), idempotensi, mismatch, branch hilang, head berubah, GitHub gagal, 422 reconcile, DB failure, reconcile endpoint, branches, list/detail. |
@@ -528,7 +553,7 @@ Gunakan endpoint nyata berikut, bukan route mock, untuk alur produksi:
 
 1. `GET /api/v1/github/connection` sebelum menampilkan form. Bila gagal, tampilkan persis “Koneksi GitHub tidak tersedia, pengajuan belum diproses” dan jangan mengubah status issue.
 2. `GET /api/v1/developer/maintenance-issues` dan detail untuk daftar/detail.
-3. `POST /api/v1/maintenance-backlogs/{issue}/claim` untuk klaim. Nonaktifkan tombol Kerjakan bila `assigned_to` tidak null atau status bukan `Ready for Development`.
+3. `POST /api/v1/maintenance-backlogs/{issue}/claim` untuk klaim. Nonaktifkan tombol Kerjakan bila `assigned_to` tidak null atau status bukan `Ready for Development`. Baca `data.branch_preparation`: bila `failed`, tampilkan pesan dan sediakan aksi retry ke `POST .../branch` tanpa mengulang klaim.
 4. `GET .../push-status`; jangan melakukan polling mutasi. `verified=true` hanya setelah push valid.
 5. `GET .../branches` untuk pilihan target; source branch bersifat read-only dan harus sama dengan branch issue.
 6. `POST .../pull-requests` dengan title/description. Kirim `Idempotency-Key` unik per percobaan/form, misalnya UUID. Jangan membuat key baru saat retry request yang sama.
@@ -547,12 +572,12 @@ Checklist QA:
 
 1. Pastikan `GITHUB_TOKEN`, `GITHUB_WEBHOOK_SECRET`, dan repository target diisi di environment yang aman. Jangan gunakan token produksi untuk uji tulis; gunakan repository/disposable branch.
 2. Jalankan `php artisan github:check`. Catat PASS/BLOCKED dan permission yang benar-benar dikembalikan. Jangan menganggap mocked test sebagai live proof.
-3. Siapkan issue `Ready for Development`, klaim oleh dua Developer berbeda; pastikan hanya satu yang menang dan pesan konflik sesuai SRS.
+3. Siapkan issue `Ready for Development`, klaim oleh dua Developer berbeda; pastikan hanya satu yang menang, pesan konflik sesuai SRS, dan branch `maintenance/issue-{id}` muncul di GitHub. Uji juga kegagalan GitHub saat klaim dan retry lewat `POST .../branch`.
 4. Verifikasi manual push ke branch hasil klaim; pastikan status baru berubah setelah branch/commit GitHub valid. Uji SHA mismatch, branch tidak ada, dan non-assignee.
 5. Konfigurasikan webhook GitHub ke `POST /api/v1/webhooks/github` dengan secret yang sama. Uji ping, push valid, push aktor salah, delivery duplikat, dan delivery stale.
 6. Ajukan PR dari issue `Ready for Pull Request`; pastikan satu PR nyata muncul di GitHub dan satu baris `pull_request` tersimpan.
 7. Kirim request PR yang sama dua kali; pastikan tidak ada PR kedua dan respons replay `200` dengan `meta.idempotent_replay=true`.
-8. Uji kegagalan GitHub (token salah/rate limit) dan pastikan issue tidak berubah menjadi sukses.
+8. Uji kegagalan GitHub (token salah/rate limit) dan pastikan issue tidak berubah menjadi sukses. Untuk klaim, pastikan assignment tetap tersimpan dan `branch_preparation.status=failed`; retry tidak boleh menggandakan assignment.
 9. Setelah kegagalan DB/timeout, jalankan `github:reconcile-pull-requests`; pastikan tidak ada pembuatan PR baru dan metadata yang ditemukan tersimpan.
 10. Periksa Network/browser: tidak ada token GitHub, tidak ada request langsung browser ke `api.github.com`.
 11. Catat tanggal, role, HTTP status, `error.code`, delivery ID, nomor PR, dan hasil `git status`/branch.
@@ -588,7 +613,7 @@ Checklist QA:
 
 ### 12.3 Rekomendasi berikutnya
 
-1. Isi token fine-grained dengan izin baca metadata/branch/commit dan Pull requests write pada repository uji.
+1. Isi token fine-grained dengan izin baca metadata/branch/commit, Contents write untuk membuat ref branch, dan Pull requests write pada repository uji.
 2. Jalankan `php artisan github:check`, lalu `php artisan github:smoke-uc05 --require-write --branch=<branch> --commit=<sha>` untuk memeriksa permission `push` yang dilaporkan GitHub dan branch read-only. Perintah ini tidak membuat PR; bukti izin Pull requests write tetap memerlukan uji tulis terpisah yang disetujui.
 3. Uji satu PR nyata di repository/branch disposable; catat nomor PR dan bukti DB.
 4. Daftarkan webhook dengan secret dan uji ping/push/duplikat di lingkungan HTTPS.

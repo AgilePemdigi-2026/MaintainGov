@@ -271,6 +271,40 @@ abstract class Uc04Uc05TestCase extends TestCase
         ]);
     }
 
+    /**
+     * Fake a missing source branch, a readable default branch, and a successful
+     * GitHub ref creation. Pass $createResponse to simulate a creation failure.
+     */
+    protected function fakeMissingBranchThenCreate(
+        string $branch,
+        string $baseSha = self::BASE_SHA,
+        ?callable $createResponse = null,
+    ): void {
+        $base = 'https://api.github.test/repos/'.self::OWNER.'/'.self::REPO;
+
+        Http::fake([
+            $base.'/branches/'.rawurlencode($branch) => Http::response(['message' => 'Not Found'], 404),
+            $base.'/branches/'.self::DEFAULT_BRANCH => Http::response(
+                $this->branchPayload(self::DEFAULT_BRANCH, $baseSha),
+            ),
+            $base.'/git/refs' => $createResponse ?? Http::response([
+                'ref' => 'refs/heads/'.$branch,
+                'object' => ['sha' => $baseSha],
+            ], 201),
+        ]);
+    }
+
+    protected function fakeExistingBranch(string $branch, string $sha = self::SOURCE_SHA): void
+    {
+        $base = 'https://api.github.test/repos/'.self::OWNER.'/'.self::REPO;
+
+        Http::fake([
+            $base.'/branches/'.rawurlencode($branch) => Http::response(
+                $this->branchPayload($branch, $sha),
+            ),
+        ]);
+    }
+
     protected function fakeBranchAndCommit(string $sha = self::SOURCE_SHA): void
     {
         $base = 'https://api.github.test/repos/'.self::OWNER.'/'.self::REPO;

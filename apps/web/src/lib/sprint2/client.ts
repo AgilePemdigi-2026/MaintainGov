@@ -9,9 +9,9 @@
 import { apiFetch } from "@/lib/api";
 import { mockApi } from "./mock";
 import type {
-  AuthUser, BacklogListQuery, BacklogStatus, BacklogUpdate, CaseDecision, CaseListQuery, CaseValidationResult,
-  MaintenanceBacklog, MaintenanceCase, MaintenanceCaseDetail, Paged, PullRequestCreate, PullRequestInfo,
-  PullRequestOptions,
+  AuthUser, BacklogListQuery, BacklogStatus, BacklogUpdate, BranchPreparation, CaseDecision, CaseListQuery,
+  CaseValidationResult, MaintenanceBacklog, MaintenanceCase, MaintenanceCaseDetail, Paged, PullRequestCreate,
+  PullRequestInfo, PullRequestOptions,
 } from "./types";
 
 export interface Sprint2Api {
@@ -26,6 +26,7 @@ export interface Sprint2Api {
   listIssues(query?: BacklogListQuery): Promise<Paged<MaintenanceBacklog>>;
   getIssue(id: number): Promise<MaintenanceBacklog>;
   claimBacklog(id: number): Promise<MaintenanceBacklog>;
+  prepareBranch(id: number): Promise<BranchPreparation>;
   getPullRequestOptions(id: number): Promise<PullRequestOptions>;
   createPullRequest(id: number, input: PullRequestCreate): Promise<PullRequestInfo>;
 }
@@ -60,6 +61,14 @@ interface BackendPushRow {
   pushed_at?: string | null;
 }
 
+interface BackendBranchPreparationRow {
+  status?: string | null;
+  branch?: string | null;
+  commit_sha?: string | null;
+  message?: string | null;
+  error_code?: string | null;
+}
+
 interface BackendBacklogRow {
   backlog_id?: number | string;
   case_id?: number | string;
@@ -81,6 +90,7 @@ interface BackendBacklogRow {
   last_push_sha?: string | null;
   last_push_at?: string | null;
   pull_request?: BackendPullRequestRow | null;
+  branch_preparation?: BackendBranchPreparationRow | null;
   created_at?: string | null;
   updated_at?: string | null;
 }
@@ -171,6 +181,20 @@ function mapAssignedTo(value: BackendBacklogRow["assigned_to"], fallbackName?: s
   };
 }
 
+function mapBranchPreparation(value: BackendBranchPreparationRow | null | undefined): BranchPreparation | null {
+  if (!value) return null;
+  const status = value.status;
+  if (status !== "created" && status !== "exists" && status !== "failed") return null;
+
+  return {
+    status,
+    branch: String(value.branch ?? ""),
+    commit_sha: value.commit_sha ?? null,
+    message: String(value.message ?? ""),
+    error_code: value.error_code ?? null,
+  };
+}
+
 function mapBacklog(row: BackendBacklogRow): MaintenanceBacklog {
   return {
     backlog_id: asNumber(row.backlog_id),
@@ -189,6 +213,7 @@ function mapBacklog(row: BackendBacklogRow): MaintenanceBacklog {
     source_branch: row.source_branch ?? null,
     last_push: mapLastPush(row),
     pull_request: row.pull_request ? mapPullRequest(row.pull_request) : null,
+    branch_preparation: mapBranchPreparation(row.branch_preparation),
     created_at: row.created_at ?? null,
     updated_at: row.updated_at ?? null,
   };
@@ -212,6 +237,7 @@ function mapIssue(row: BackendIssueRow): MaintenanceBacklog {
     source_branch: row.source_branch ?? null,
     last_push: mapLastPush(row),
     pull_request: row.pull_request ? mapPullRequest(row.pull_request) : null,
+    branch_preparation: mapBranchPreparation(row.branch_preparation),
     created_at: row.created_at ?? null,
     updated_at: row.updated_at ?? null,
   };
@@ -320,6 +346,14 @@ export const liveApi: Sprint2Api = {
   claimBacklog: async id => {
     const { data } = await apiFetch<{ data: BackendIssueRow }>(`/maintenance-backlogs/${id}/claim`, { method: "POST" });
     return mapIssue(data);
+  },
+  prepareBranch: async id => {
+    const { data } = await apiFetch<{ data: BackendBranchPreparationRow }>(`/maintenance-backlogs/${id}/branch`, {
+      method: "POST",
+    });
+    const result = mapBranchPreparation(data);
+    if (!result) throw new Error("Respons penyiapan branch GitHub tidak valid.");
+    return result;
   },
   getPullRequestOptions: async id => {
     const { data } = await apiFetch<{ data: BackendBranches }>(`/maintenance-backlogs/${id}/branches`);

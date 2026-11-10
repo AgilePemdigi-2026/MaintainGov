@@ -25,6 +25,8 @@ Route::prefix('developer/maintenance-issues')->middleware(['auth', 'role:Develop
 Route::middleware(['auth', 'role:Developer'])->group(function () {
     Route::post('/maintenance-backlogs/{issue}/claim', [MaintenanceIssueController::class, 'claim'])
         ->whereNumber('issue');
+    Route::post('/maintenance-backlogs/{issue}/branch', [MaintenanceIssueController::class, 'prepareBranch'])
+        ->whereNumber('issue');
     Route::get('/maintenance-backlogs/{issue}/push-status', [MaintenanceIssueController::class, 'pushStatus'])
         ->whereNumber('issue');
     Route::post('/maintenance-backlogs/{issue}/push-verifications', [MaintenanceIssueController::class, 'verifyPush'])

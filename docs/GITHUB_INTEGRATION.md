@@ -1,6 +1,6 @@
 # Integrasi GitHub — Feature 9
 
-Status: koneksi read-only dan backend UC04–UC05 (klaim atomik, verifikasi push, webhook, pembuatan PR nyata, idempotensi, rekonsiliasi) sudah diimplementasikan serta diuji dengan GitHub palsu. **Live authenticated check dan live write smoke masih BLOCKED** karena `GITHUB_TOKEN` belum tersedia di environment lokal. Dokumen ini menjelaskan implementasi aktual, batas operasi tulis, kontrak UC04–UC05, dan langkah verifikasi. Ringkasan status terbaru ada di bagian 0; bagian 1–8 dipertahankan sebagai catatan Week 1 dan telah diberi koreksi status.
+Status: koneksi read-only dan backend UC04–UC05 (klaim atomik + pembuatan branch otomatis, verifikasi push, webhook, pembuatan PR nyata, idempotensi, rekonsiliasi) sudah diimplementasikan serta diuji dengan GitHub palsu. **Live authenticated check dan live write smoke masih BLOCKED** karena `GITHUB_TOKEN` belum tersedia di environment lokal. Dokumen ini menjelaskan implementasi aktual, batas operasi tulis, kontrak UC04–UC05, dan langkah verifikasi. Ringkasan status terbaru ada di bagian 0; bagian 1–8 dipertahankan sebagai catatan Week 1 dan telah diberi koreksi status.
 
 Acuan resmi:
 
@@ -17,7 +17,8 @@ Bagian 1–8 di bawah adalah catatan Week 1 dan tetap dipertahankan sebagai riwa
 
 | Area | Status aktual | Bukti |
 | --- | --- | --- |
-| Klaim issue UC04 | Nyata, atomik, persisten | `/maintenance-backlogs/{issue}/claim` |
+| Klaim issue UC04 | Nyata, atomik, persisten, membuat branch GitHub best-effort | `/maintenance-backlogs/{issue}/claim` |
+| Penyiapan/retry branch | Idempotent `POST /repos/{owner}/{repo}/git/refs` | `/maintenance-backlogs/{issue}/branch` |
 | Verifikasi push manual | Nyata, membaca branch/commit GitHub | `/maintenance-backlogs/{issue}/push-verifications` |
 | Webhook push | Nyata, HMAC + ledger delivery + validasi aktor | `POST /webhooks/github` |
 | Buat Pull Request | Nyata, `POST /repos/{owner}/{repo}/pulls` | `/maintenance-backlogs/{issue}/pull-requests` |
@@ -51,6 +52,7 @@ flowchart LR
     CONN --> SVC
     UC --> SVC
     SVC -->|GET repos/branches/commits| GH
+    SVC -->|POST /git/refs| GH
     SVC -->|POST /pulls| GH
     SVC -->|Bearer token dari env server| GH
     GH -->|metadata / 401 / 403 / 429 / 5xx| SVC
@@ -66,7 +68,7 @@ flowchart LR
     GH -->|signed webhook push| API
 ```
 
-Frontend tidak pernah menerima token GitHub. Token hanya dibaca oleh Laravel dari environment server. Garis putus-putus menunjukkan mock Week 1 yang tetap aktif hanya di local/testing. Operasi tulis **ke GitHub** hanya terjadi pada alur UC05 setelah seluruh validasi lulus; webhook push hanya membaca branch/commit GitHub lalu menulis status ke database. Tidak ada endpoint untuk melakukan `git push` karena perubahan source code tetap dilakukan di luar MaintainGov.
+Frontend tidak pernah menerima token GitHub. Token hanya dibaca oleh Laravel dari environment server. Garis putus-putus menunjukkan mock Week 1 yang tetap aktif hanya di local/testing. Operasi tulis **ke GitHub** terjadi saat klaim/retry membuat branch (`POST /git/refs`) dan pada alur UC05 setelah seluruh validasi lulus; webhook push hanya membaca branch/commit GitHub lalu menulis status ke database. Tidak ada endpoint untuk melakukan `git push` karena perubahan source code tetap dilakukan di luar MaintainGov.
 
 ## 2. Konfigurasi
 
@@ -78,7 +80,7 @@ Tambahkan variabel berikut pada `apps/api/.env` lokal atau secret manager. Janga
 | `GITHUB_REPOSITORY_OWNER` | `AgilePemdigi-2026` | Owner repository utama. |
 | `GITHUB_REPOSITORY_NAME` | `MaintainGov` | Nama repository utama. |
 | `GITHUB_DEFAULT_BRANCH` | `main` | Branch tujuan default dan branch yang dilindungi dari klaim. |
-| `GITHUB_TOKEN` | kosong | Token server-side untuk baca metadata/branch/commit dan tulis Pull Request. Wajib untuk operasi nyata. |
+| `GITHUB_TOKEN` | kosong | Token server-side untuk baca metadata/branch/commit, membuat ref branch, dan tulis Pull Request. Wajib untuk operasi nyata. |
 | `GITHUB_TIMEOUT` | `10` | Timeout request (detik). |
 | `GITHUB_CONNECT_TIMEOUT` | `5` | Timeout koneksi (detik). |
 | `GITHUB_WEBHOOK_SECRET` | kosong | HMAC secret `X-Hub-Signature-256`; kosong berarti webhook ditolak 503. |
@@ -88,7 +90,7 @@ Tambahkan variabel berikut pada `apps/api/.env` lokal atau secret manager. Janga
 
 Implementasi saat ini memakai **Bearer token** (`GITHUB_TOKEN`). Ini dapat berupa fine-grained personal access token, atau mekanisme token lain yang disetujui tim. **GitHub App JWT/installation-token exchange belum diimplementasikan** karena kredensial App dan izinnya belum diverifikasi (D09). Jangan menganggap App sudah aktif.
 
-Izin minimum yang dibutuhkan implementasi UC04/UC05 adalah **Metadata: read**, **Contents: read**, dan **Pull requests: write** pada repository target. Izin aktual belum dinyatakan terverifikasi karena live check masih BLOCKED. Token tidak boleh dikirim ke browser atau disimpan di database.
+Izin minimum yang dibutuhkan implementasi UC04/UC05 adalah **Metadata: read**, **Contents: write** (membuat ref/branch), dan **Pull requests: write** pada repository target. Izin aktual belum dinyatakan terverifikasi karena live check masih BLOCKED. Token tidak boleh dikirim ke browser atau disimpan di database.
 
 Jika token belum tersedia, adapter tidak mengirim request dan mengembalikan status aman `unavailable` dengan kode `GITHUB_NOT_CONFIGURED`.
 
@@ -150,7 +152,7 @@ Perintah ini hanya membaca koneksi, branch, commit, dan PR yang sudah ada. Opsi 
 
 ## 5. Kontrak UC04–UC05: endpoint nyata dan mock Week 1
 
-Kontrak endpoint nyata: [contracts/uc04-uc05-real-api.md](../contracts/uc04-uc05-real-api.md). Route produksi berada di `/api/v1/developer/maintenance-issues`, `/api/v1/maintenance-backlogs/{issue}/claim`, `/api/v1/maintenance-backlogs/{issue}/push-status`, `/api/v1/maintenance-backlogs/{issue}/push-verifications`, `/api/v1/maintenance-backlogs/{issue}/branches`, `/api/v1/maintenance-backlogs/{issue}/pull-requests`, `/api/v1/maintenance-backlogs/{issue}/pull-requests/reconcile`, `/api/v1/pull-requests/{pullRequest}`, dan `/api/v1/webhooks/github`. Detail alur, idempotensi, rekonsiliasi, dan error ada di [UC04_UC05_BACKEND.md](UC04_UC05_BACKEND.md).
+Kontrak endpoint nyata: [contracts/uc04-uc05-real-api.md](../contracts/uc04-uc05-real-api.md). Route produksi berada di `/api/v1/developer/maintenance-issues`, `/api/v1/maintenance-backlogs/{issue}/claim`, `/api/v1/maintenance-backlogs/{issue}/branch`, `/api/v1/maintenance-backlogs/{issue}/push-status`, `/api/v1/maintenance-backlogs/{issue}/push-verifications`, `/api/v1/maintenance-backlogs/{issue}/branches`, `/api/v1/maintenance-backlogs/{issue}/pull-requests`, `/api/v1/maintenance-backlogs/{issue}/pull-requests/reconcile`, `/api/v1/pull-requests/{pullRequest}`, dan `/api/v1/webhooks/github`. Detail alur, idempotensi, rekonsiliasi, dan error ada di [UC04_UC05_BACKEND.md](UC04_UC05_BACKEND.md).
 
 Kontrak mock Week 1 tetap dipertahankan dan tidak diubah: [contracts/uc04-uc05-api.md](../contracts/uc04-uc05-api.md). Ringkasan route mock:
 

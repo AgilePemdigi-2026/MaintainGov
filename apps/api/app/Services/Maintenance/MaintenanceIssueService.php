@@ -5,6 +5,7 @@ namespace App\Services\Maintenance;
 use App\Exceptions\ApiException;
 use App\Models\MaintenanceBacklog;
 use App\Models\Pengguna;
+use App\Services\GitHub\BranchPreparationService;
 use App\Services\GitHub\GitHubRepositoryService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -25,6 +26,7 @@ class MaintenanceIssueService
 
     public function __construct(
         private readonly GitHubRepositoryService $repositories,
+        private readonly BranchPreparationService $branches,
     ) {}
 
     /**
@@ -163,8 +165,38 @@ class MaintenanceIssueService
 
         $data = $this->findData($backlogId);
         $data['message'] = 'Issue berhasil diambil.';
+        $data['branch_preparation'] = $this->branches->ensure($branch);
 
         return $data;
+    }
+
+    /**
+     * Retry creating the source branch on GitHub without changing assignment.
+     *
+     * @return array<string, mixed>
+     */
+    public function prepareBranch(int $backlogId, Pengguna $developer): array
+    {
+        $issue = $this->findData($backlogId);
+        $this->assertAssignee($issue, $developer);
+
+        $branch = $issue['source_branch'] ?? null;
+
+        if (! is_string($branch) || trim($branch) === '') {
+            throw ApiException::conflict(
+                'Branch sumber issue belum ditetapkan.',
+                'ISSUE_BRANCH_NOT_SET',
+            );
+        }
+
+        if (! in_array($issue['status'], self::ACTIVE_STATUSES, true)) {
+            throw ApiException::conflict(
+                'Branch hanya dapat disiapkan saat issue sedang dikerjakan.',
+                'ISSUE_NOT_PREPARABLE',
+            );
+        }
+
+        return $this->branches->ensure($branch);
     }
 
     /**

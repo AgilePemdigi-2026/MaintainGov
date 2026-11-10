@@ -102,8 +102,19 @@ export interface MaintenanceBacklog {
   /** Diisi backend setelah push GitHub terverifikasi (UC04); null bila belum. */
   last_push: { sha: string; branch: string; pushed_at: string } | null;
   pull_request: PullRequestInfo | null;
+  /** Hanya ada pada respons klaim atau setelah penyiapan branch dicoba. */
+  branch_preparation?: BranchPreparation | null;
   created_at: string | null;
   updated_at: string | null;
+}
+
+/** Hasil idempotent penyiapan branch kerja di GitHub (UC04). */
+export interface BranchPreparation {
+  status: "created" | "exists" | "failed";
+  branch: string;
+  commit_sha: string | null;
+  message: string;
+  error_code: string | null;
 }
 
 export interface BacklogListQuery {

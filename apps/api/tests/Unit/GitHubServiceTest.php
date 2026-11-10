@@ -232,6 +232,61 @@ class GitHubServiceTest extends TestCase
         Log::shouldNotHaveReceived('critical');
     }
 
+    public function test_create_branch_posts_the_ref_and_validates_the_response(): void
+    {
+        $sha = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+
+        Http::fake([
+            'https://api.github.test/repos/AgilePemdigi-2026/MaintainGov/git/refs' => Http::response([
+                'ref' => 'refs/heads/maintenance/issue-7',
+                'object' => ['sha' => $sha],
+            ], 201),
+        ]);
+
+        $result = $this->service()->createBranch('maintenance/issue-7', $sha);
+
+        $this->assertTrue($result->success);
+        $this->assertSame(201, $result->httpStatus);
+        $this->assertNull($result->errorCode);
+        $this->assertSame([
+            'name' => 'maintenance/issue-7',
+            'sha' => $sha,
+        ], $result->data);
+
+        Http::assertSent(function (Request $request) use ($sha): bool {
+            return $request->method() === 'POST'
+                && $request->url() === 'https://api.github.test/repos/AgilePemdigi-2026/MaintainGov/git/refs'
+                && $request->hasHeader('Authorization', 'Bearer '.self::TOKEN)
+                && ($request->data()['ref'] ?? null) === 'refs/heads/maintenance/issue-7'
+                && ($request->data()['sha'] ?? null) === $sha;
+        });
+    }
+
+    public function test_create_branch_rejects_an_invalid_sha_without_sending_a_request(): void
+    {
+        $result = $this->service()->createBranch('maintenance/issue-7', 'not-a-commit-sha');
+
+        $this->assertFalse($result->success);
+        $this->assertSame(422, $result->httpStatus);
+        $this->assertSame('GITHUB_INVALID_COMMIT_SHA', $result->errorCode);
+        Http::assertNothingSent();
+    }
+
+    public function test_reference_already_exists_is_mapped_safely(): void
+    {
+        Http::fake(['*' => Http::response(['message' => 'Reference already exists'], 422)]);
+
+        $result = $this->service()->createBranch(
+            'maintenance/issue-7',
+            'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        );
+
+        $this->assertFalse($result->success);
+        $this->assertSame(422, $result->httpStatus);
+        $this->assertSame('GITHUB_REFERENCE_EXISTS', $result->errorCode);
+        $this->assertStringNotContainsString(self::TOKEN, (string) json_encode($result->errorMessage));
+    }
+
     private function service(): GitHubService
     {
         return $this->app->make(GitHubService::class);
