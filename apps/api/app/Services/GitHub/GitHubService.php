@@ -125,6 +125,51 @@ class GitHubService
         );
     }
 
+    public function createBranch(string $branch, string $sha): GitHubApiResult
+    {
+        if (! preg_match('/^[0-9a-fA-F]{40}$/', $sha)) {
+            return GitHubApiResult::failure(
+                'GITHUB_INVALID_COMMIT_SHA',
+                'Commit SHA tidak valid.',
+                422,
+            );
+        }
+
+        $config = $this->configuration();
+
+        if ($config === null) {
+            return $this->notConfigured();
+        }
+
+        $url = $config['api_url'].'/repos/'.rawurlencode($config['owner']).'/'.rawurlencode($config['repository'])
+            .'/git/refs';
+
+        return $this->callAndValidate(
+            fn () => $this->http($config)->post($url, [
+                'ref' => 'refs/heads/'.$branch,
+                'sha' => $sha,
+            ]),
+            function (array $payload) use ($branch, $sha): ?array {
+                $ref = $payload['ref'] ?? null;
+                $returnedSha = data_get($payload, 'object.sha');
+
+                if (! is_string($ref) || $ref !== 'refs/heads/'.$branch) {
+                    return null;
+                }
+
+                if (! is_string($returnedSha) || strcasecmp($returnedSha, $sha) !== 0) {
+                    return null;
+                }
+
+                return [
+                    'name' => $branch,
+                    'sha' => $returnedSha,
+                ];
+            },
+            [201],
+        );
+    }
+
     public function getCommit(string $sha): GitHubApiResult
     {
         if (! preg_match('/^[0-9a-fA-F]{40}$/', $sha)) {
@@ -386,6 +431,11 @@ class GitHubService
                 'GitHub resource was not found.',
                 404,
             ),
+            $response->status() === 422 && $this->isReferenceExists($response) => GitHubApiResult::failure(
+                'GITHUB_REFERENCE_EXISTS',
+                'GitHub reference already exists.',
+                422,
+            ),
             $response->status() === 422 => GitHubApiResult::failure(
                 'GITHUB_VALIDATION_FAILED',
                 'GitHub rejected the request.',
@@ -604,6 +654,14 @@ class GitHubService
         return str_contains($message, 'rate limit')
             || str_contains($message, 'secondary rate')
             || str_contains($documentationUrl, 'rate-limit');
+    }
+
+    private function isReferenceExists(Response $response): bool
+    {
+        $message = $response->json('message');
+
+        return is_string($message)
+            && str_contains(strtolower($message), 'reference already exists');
     }
 
     private function retryAfterSeconds(Response $response): ?int

@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\MaintenanceBacklog;
+use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 
@@ -16,11 +17,13 @@ class MaintenanceIssueClaimTest extends Uc04Uc05TestCase
 
         $this->getJson('/api/v1/developer/maintenance-issues')->assertUnauthorized();
         $this->postJson($path.'/claim')->assertUnauthorized();
+        $this->postJson($path.'/branch')->assertUnauthorized();
         $this->getJson($path.'/push-status')->assertUnauthorized();
         $this->postJson($path.'/push-verifications')->assertUnauthorized();
 
         $this->actingAs($maintenance)->getJson('/api/v1/developer/maintenance-issues')->assertForbidden();
         $this->actingAs($maintenance)->postJson($path.'/claim')->assertForbidden();
+        $this->actingAs($maintenance)->postJson($path.'/branch')->assertForbidden();
         $this->actingAs($maintenance)->getJson($path.'/push-status')->assertForbidden();
         $this->actingAs($maintenance)->postJson($path.'/push-verifications')->assertForbidden();
 
@@ -125,7 +128,9 @@ class MaintenanceIssueClaimTest extends Uc04Uc05TestCase
     {
         $developer = $this->developer();
         $issue = $this->createIssue();
+        $branch = 'maintenance/issue-'.$issue['backlog_id'];
         $this->travelTo('2026-11-04 10:00:00');
+        $this->fakeMissingBranchThenCreate($branch);
 
         $response = $this->actingAs($developer)
             ->postJson('/api/v1/maintenance-backlogs/'.$issue['backlog_id'].'/claim');
@@ -134,13 +139,17 @@ class MaintenanceIssueClaimTest extends Uc04Uc05TestCase
             ->assertJsonPath('success', true)
             ->assertJsonPath('data.status', MaintenanceBacklog::STATUS_IN_PROGRESS)
             ->assertJsonPath('data.assigned_to.user_id', $developer->user_id)
-            ->assertJsonPath('data.source_branch', 'maintenance/issue-'.$issue['backlog_id'])
-            ->assertJsonPath('data.assigned_at', '2026-11-04T10:00:00+00:00');
+            ->assertJsonPath('data.source_branch', $branch)
+            ->assertJsonPath('data.assigned_at', '2026-11-04T10:00:00+00:00')
+            ->assertJsonPath('data.branch_preparation.status', 'created')
+            ->assertJsonPath('data.branch_preparation.branch', $branch)
+            ->assertJsonPath('data.branch_preparation.commit_sha', self::BASE_SHA)
+            ->assertJsonPath('data.branch_preparation.error_code', null);
 
         $this->assertDatabaseHas('maintenance_backlog', [
             'backlog_id' => $issue['backlog_id'],
             'assigned_to' => $developer->user_id,
-            'source_branch' => 'maintenance/issue-'.$issue['backlog_id'],
+            'source_branch' => $branch,
             'status' => MaintenanceBacklog::STATUS_IN_PROGRESS,
             'last_push_sha' => null,
         ]);
@@ -151,26 +160,31 @@ class MaintenanceIssueClaimTest extends Uc04Uc05TestCase
             'full_name' => self::OWNER.'/'.self::REPO,
         ]);
 
-        Http::assertNothingSent();
+        $this->assertRefWasCreated($branch, self::BASE_SHA);
     }
 
     public function test_claim_accepts_an_explicit_source_branch(): void
     {
         $developer = $this->developer();
         $issue = $this->createIssue();
+        $this->fakeMissingBranchThenCreate('fix/notification-timeout');
 
         $this->actingAs($developer)
             ->postJson('/api/v1/maintenance-backlogs/'.$issue['backlog_id'].'/claim', [
                 'source_branch' => 'fix/notification-timeout',
             ])
             ->assertOk()
-            ->assertJsonPath('data.source_branch', 'fix/notification-timeout');
+            ->assertJsonPath('data.source_branch', 'fix/notification-timeout')
+            ->assertJsonPath('data.branch_preparation.status', 'created')
+            ->assertJsonPath('data.branch_preparation.branch', 'fix/notification-timeout');
 
         $this->assertDatabaseHas('maintenance_backlog', [
             'backlog_id' => $issue['backlog_id'],
             'source_branch' => 'fix/notification-timeout',
             'assigned_to' => $developer->user_id,
         ]);
+
+        $this->assertRefWasCreated('fix/notification-timeout');
     }
 
     public function test_second_claim_returns_409_with_srs_message_and_does_not_reassign(): void
@@ -178,6 +192,8 @@ class MaintenanceIssueClaimTest extends Uc04Uc05TestCase
         $winner = $this->developer();
         $loser = $this->developer();
         $issue = $this->createIssue();
+        $branch = 'maintenance/issue-'.$issue['backlog_id'];
+        $this->fakeMissingBranchThenCreate($branch);
 
         $this->actingAs($winner)
             ->postJson('/api/v1/maintenance-backlogs/'.$issue['backlog_id'].'/claim')
@@ -194,6 +210,154 @@ class MaintenanceIssueClaimTest extends Uc04Uc05TestCase
             'assigned_to' => $winner->user_id,
             'status' => MaintenanceBacklog::STATUS_IN_PROGRESS,
         ]);
+
+        $this->assertSame(1, $this->refCreationCount());
+    }
+
+    public function test_claim_reports_an_existing_branch_without_creating_it_again(): void
+    {
+        $developer = $this->developer();
+        $issue = $this->createIssue();
+        $branch = 'maintenance/issue-'.$issue['backlog_id'];
+        $this->fakeExistingBranch($branch);
+
+        $this->actingAs($developer)
+            ->postJson('/api/v1/maintenance-backlogs/'.$issue['backlog_id'].'/claim')
+            ->assertOk()
+            ->assertJsonPath('data.branch_preparation.status', 'exists')
+            ->assertJsonPath('data.branch_preparation.branch', $branch)
+            ->assertJsonPath('data.branch_preparation.commit_sha', self::SOURCE_SHA);
+
+        $this->assertSame(0, $this->refCreationCount());
+        Http::assertSentCount(1);
+    }
+
+    public function test_claim_still_succeeds_when_github_branch_creation_fails(): void
+    {
+        $developer = $this->developer();
+        $issue = $this->createIssue();
+        $branch = 'maintenance/issue-'.$issue['backlog_id'];
+        $this->fakeMissingBranchThenCreate(
+            $branch,
+            self::BASE_SHA,
+            fn () => Http::response(['message' => 'Server error'], 500),
+        );
+
+        $this->actingAs($developer)
+            ->postJson('/api/v1/maintenance-backlogs/'.$issue['backlog_id'].'/claim')
+            ->assertOk()
+            ->assertJsonPath('data.status', MaintenanceBacklog::STATUS_IN_PROGRESS)
+            ->assertJsonPath('data.assigned_to.user_id', $developer->user_id)
+            ->assertJsonPath('data.branch_preparation.status', 'failed')
+            ->assertJsonPath('data.branch_preparation.branch', $branch)
+            ->assertJsonPath('data.branch_preparation.commit_sha', null)
+            ->assertJsonPath('data.branch_preparation.error_code', 'GITHUB_UNAVAILABLE')
+            ->assertJsonPath('data.branch_preparation.message', 'GitHub sedang tidak dapat dihubungi.');
+
+        $this->assertDatabaseHas('maintenance_backlog', [
+            'backlog_id' => $issue['backlog_id'],
+            'assigned_to' => $developer->user_id,
+            'source_branch' => $branch,
+            'status' => MaintenanceBacklog::STATUS_IN_PROGRESS,
+        ]);
+
+        $this->assertRefWasCreated($branch, self::BASE_SHA);
+    }
+
+    public function test_claim_treats_reference_already_exists_as_an_existing_branch(): void
+    {
+        $developer = $this->developer();
+        $issue = $this->createIssue();
+        $branch = 'maintenance/issue-'.$issue['backlog_id'];
+        $reads = 0;
+
+        Http::fake(function (Request $request) use (&$reads, $branch) {
+            $url = $request->url();
+
+            if ($request->method() === 'POST' && str_ends_with($url, '/git/refs')) {
+                return Http::response(['message' => 'Reference already exists'], 422);
+            }
+
+            if (str_ends_with($url, '/branches/'.rawurlencode($branch))) {
+                $reads++;
+
+                return $reads === 1
+                    ? Http::response(['message' => 'Not Found'], 404)
+                    : Http::response($this->branchPayload($branch, self::SOURCE_SHA));
+            }
+
+            return Http::response(
+                $this->branchPayload(self::DEFAULT_BRANCH, self::BASE_SHA),
+            );
+        });
+
+        $response = $this->actingAs($developer)
+            ->postJson('/api/v1/maintenance-backlogs/'.$issue['backlog_id'].'/claim');
+
+        $this->assertSame(2, $reads, json_encode($response->json('data.branch_preparation')) ?: '');
+        $response->assertOk()
+            ->assertJsonPath('data.branch_preparation.status', 'exists')
+            ->assertJsonPath('data.branch_preparation.commit_sha', self::SOURCE_SHA);
+    }
+
+    public function test_assignee_can_retry_branch_preparation(): void
+    {
+        $developer = $this->developer();
+        $issue = $this->assignedIssue($developer);
+        $this->fakeMissingBranchThenCreate(self::SOURCE_BRANCH);
+
+        $this->actingAs($developer)
+            ->postJson('/api/v1/maintenance-backlogs/'.$issue['backlog_id'].'/branch')
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('message', 'Branch berhasil dibuat di GitHub.')
+            ->assertJsonPath('data.status', 'created')
+            ->assertJsonPath('data.branch', self::SOURCE_BRANCH)
+            ->assertJsonPath('data.commit_sha', self::BASE_SHA);
+
+        $this->assertRefWasCreated(self::SOURCE_BRANCH, self::BASE_SHA);
+    }
+
+    public function test_branch_preparation_retry_is_forbidden_for_another_developer(): void
+    {
+        $assignee = $this->developer();
+        $other = $this->developer();
+        $issue = $this->assignedIssue($assignee);
+
+        $this->actingAs($other)
+            ->postJson('/api/v1/maintenance-backlogs/'.$issue['backlog_id'].'/branch')
+            ->assertForbidden()
+            ->assertJsonPath('error.code', 'ISSUE_NOT_ASSIGNED_TO_DEVELOPER');
+
+        Http::assertNothingSent();
+    }
+
+    public function test_branch_preparation_requires_an_active_issue(): void
+    {
+        $developer = $this->developer();
+        $issue = $this->createIssue([], [
+            'assigned_to' => $developer->user_id,
+            'assigned_at' => now(),
+            'source_branch' => self::SOURCE_BRANCH,
+            'status' => MaintenanceBacklog::STATUS_DONE,
+        ]);
+
+        $this->actingAs($developer)
+            ->postJson('/api/v1/maintenance-backlogs/'.$issue['backlog_id'].'/branch')
+            ->assertStatus(409)
+            ->assertJsonPath('error.code', 'ISSUE_NOT_PREPARABLE');
+
+        Http::assertNothingSent();
+    }
+
+    public function test_branch_preparation_returns_404_for_unknown_issue(): void
+    {
+        $this->actingAs($this->developer())
+            ->postJson('/api/v1/maintenance-backlogs/99999/branch')
+            ->assertNotFound()
+            ->assertJsonPath('error.code', 'ISSUE_NOT_FOUND');
+
+        Http::assertNothingSent();
     }
 
     public function test_claim_rejects_an_issue_that_is_not_ready_for_development(): void
@@ -322,5 +486,28 @@ class MaintenanceIssueClaimTest extends Uc04Uc05TestCase
 
         $this->assertSame($before, $after);
         Http::assertNothingSent();
+    }
+
+    private function assertRefWasCreated(string $branch, ?string $sha = null): void
+    {
+        Http::assertSent(function (Request $request) use ($branch, $sha): bool {
+            if ($request->method() !== 'POST' || ! str_ends_with($request->url(), '/git/refs')) {
+                return false;
+            }
+
+            if (($request->data()['ref'] ?? null) !== 'refs/heads/'.$branch) {
+                return false;
+            }
+
+            return $sha === null || ($request->data()['sha'] ?? null) === $sha;
+        });
+    }
+
+    private function refCreationCount(): int
+    {
+        return Http::recorded()
+            ->filter(fn (array $pair): bool => $pair[0]->method() === 'POST'
+                && str_ends_with($pair[0]->url(), '/git/refs'))
+            ->count();
     }
 }

@@ -8,6 +8,7 @@ import type {
 
 const STATE_KEY = "mg-sprint2-mock-state";
 export const MOCK_ROLE_KEY = "mg-mock-role";
+const MOCK_BASE_SHA = "0000000000000000000000000000000000000000";
 
 const USERS: Record<string, AuthUser> = {
   maintenance: { user_id: 1, nama: "Budi Prasetyo", email: "maintenance@maintaingov.test", role: "Tim Maintenance" },
@@ -215,9 +216,14 @@ export const mockApi: Sprint2Api = {
     const backlog = findBacklog(state, id);
     if (backlog.assigned_to || backlog.status !== "Ready for Development") throw new ApiError(409, "Issue telah diambil Developer lain");
     const user = currentUser();
+    const branch = `maintenance/issue-${backlog.backlog_id}`;
     Object.assign(backlog, {
       status: "Sedang Dikerjakan", assigned_to: { user_id: user.user_id, nama: user.nama },
-      assigned_at: new Date().toISOString(), source_branch: `fix/backlog-${backlog.backlog_id}`,
+      assigned_at: new Date().toISOString(), source_branch: branch,
+      branch_preparation: {
+        status: "created", branch, commit_sha: MOCK_BASE_SHA,
+        message: "Branch berhasil dibuat di GitHub.", error_code: null,
+      },
     });
     save(state);
     return delay(backlog);
