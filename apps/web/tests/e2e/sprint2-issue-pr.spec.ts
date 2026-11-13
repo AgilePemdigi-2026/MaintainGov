@@ -81,7 +81,7 @@ test("claim success updates status and assignee, POST sent once on double click"
   expect(mock.calls.filter(call => call.method === "POST" && call.path === "/maintenance-backlogs/7/claim")).toHaveLength(1);
 });
 
-test("claim reports branch preparation failure and assignee can retry", async ({ page }) => {
+test("claim reports failed branch preparation without a manual retry button", async ({ page }) => {
   const branch = "maintenance/issue-7";
   let current = issue();
   const mock = await mockApi(page, USERS.developer, ({ method, path }) => {
@@ -96,22 +96,14 @@ test("claim reports branch preparation failure and assignee can retry", async ({
       });
       return { body: { data: current } };
     }
-    if (method === "POST" && path === "/maintenance-backlogs/7/branch") {
-      const preparation = {
-        status: "created", branch, commit_sha: "a".repeat(40),
-        message: "Branch berhasil dibuat di GitHub.", error_code: null,
-      };
-      current = issue({ ...current, source_branch: branch, branch_preparation: preparation });
-      return { body: { data: preparation, message: preparation.message } };
-    }
   });
   await page.goto("/maintenance-issue/7");
   await page.getByRole("button", { name: "Kerjakan issue" }).click();
   await expect(page.getByText("GitHub sedang tidak dapat dihubungi.")).toBeVisible();
   await expect(page.getByText("Klaim issue tetap tersimpan", { exact: false })).toBeVisible();
-  await page.getByRole("button", { name: "Siapkan branch GitHub" }).click();
-  await expect(page.getByText("Branch berhasil dibuat di GitHub.")).toBeVisible();
-  expect(mock.calls.filter(call => call.method === "POST" && call.path === "/maintenance-backlogs/7/branch")).toHaveLength(1);
+  await expect(page.getByText("Buat branch tersebut secara manual", { exact: false })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Siapkan branch GitHub" })).toHaveCount(0);
+  expect(mock.calls.filter(call => call.method === "POST" && call.path === "/maintenance-backlogs/7/branch")).toHaveLength(0);
 });
 
 test("claim 409 shows taken message and locks the button", async ({ page }) => {

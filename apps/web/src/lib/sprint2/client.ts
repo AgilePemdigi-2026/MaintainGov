@@ -26,7 +26,6 @@ export interface Sprint2Api {
   listIssues(query?: BacklogListQuery): Promise<Paged<MaintenanceBacklog>>;
   getIssue(id: number): Promise<MaintenanceBacklog>;
   claimBacklog(id: number): Promise<MaintenanceBacklog>;
-  prepareBranch(id: number): Promise<BranchPreparation>;
   getPullRequestOptions(id: number): Promise<PullRequestOptions>;
   createPullRequest(id: number, input: PullRequestCreate): Promise<PullRequestInfo>;
 }
@@ -346,14 +345,6 @@ export const liveApi: Sprint2Api = {
   claimBacklog: async id => {
     const { data } = await apiFetch<{ data: BackendIssueRow }>(`/maintenance-backlogs/${id}/claim`, { method: "POST" });
     return mapIssue(data);
-  },
-  prepareBranch: async id => {
-    const { data } = await apiFetch<{ data: BackendBranchPreparationRow }>(`/maintenance-backlogs/${id}/branch`, {
-      method: "POST",
-    });
-    const result = mapBranchPreparation(data);
-    if (!result) throw new Error("Respons penyiapan branch GitHub tidak valid.");
-    return result;
   },
   getPullRequestOptions: async id => {
     const { data } = await apiFetch<{ data: BackendBranches }>(`/maintenance-backlogs/${id}/branches`);

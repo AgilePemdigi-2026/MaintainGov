@@ -229,29 +229,6 @@ export const mockApi: Sprint2Api = {
     return delay(backlog);
   },
 
-  async prepareBranch(id) {
-    requireRole("Developer");
-    const state = load();
-    const backlog = findBacklog(state, id);
-    const user = currentUser();
-    if (backlog.assigned_to?.user_id !== user.user_id) throw new ApiError(403, "Issue tidak ditugaskan kepada Developer ini.");
-    if (backlog.status !== "Sedang Dikerjakan" && backlog.status !== "Ready for Pull Request") {
-      throw new ApiError(409, "Branch hanya dapat disiapkan saat issue sedang dikerjakan.");
-    }
-    const branch = backlog.source_branch ?? `maintenance/issue-${backlog.backlog_id}`;
-    const exists = backlog.branch_preparation?.status === "created" || backlog.branch_preparation?.status === "exists";
-    const result = {
-      status: exists ? "exists" as const : "created" as const,
-      branch, commit_sha: MOCK_BASE_SHA,
-      message: exists ? "Branch sudah tersedia di GitHub." : "Branch berhasil dibuat di GitHub.",
-      error_code: null,
-    };
-    backlog.branch_preparation = result;
-    backlog.source_branch = branch;
-    save(state);
-    return delay(result);
-  },
-
   async getPullRequestOptions(id) {
     requireRole("Developer");
     const backlog = findBacklog(load(), id);
