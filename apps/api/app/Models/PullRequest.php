@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class PullRequest extends Model
 {
@@ -27,6 +28,7 @@ class PullRequest extends Model
         'github_base_sha',
         'submission_state',
         'lifecycle_state',
+        'review_state',
         'request_fingerprint',
         'idempotency_key',
         'last_error_code',
@@ -52,5 +54,10 @@ class PullRequest extends Model
     public function repository(): BelongsTo
     {
         return $this->belongsTo(GitHubRepository::class, 'repository_id', 'repository_id');
+    }
+
+    public function reviews(): HasMany
+    {
+        return $this->hasMany(CodeReview::class, 'pull_request_id', 'pull_request_id');
     }
 }
