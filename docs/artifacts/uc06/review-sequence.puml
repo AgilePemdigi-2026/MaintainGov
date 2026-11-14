@@ -1,0 +1,55 @@
+@startuml review-sequence
+title UC06 — Review Pull Request (W14-01)
+hide footbox
+skinparam sequenceMessageTextAlignment center
+
+actor "Reviewer\n(Developer)" as R
+participant "Laravel API" as API
+database "MySQL" as DB
+participant "GitHubService\n(adapter)" as GH
+participant "GitHub REST API" as GIT
+
+== Prasyarat ==
+R -> API: POST /api/v1/pull-requests/{id}/reviews\n{decision: approve|request_changes, comment?}
+activate API
+API -> API: Validasi FormRequest\n(422 VALIDATION_ERROR bila gagal)
+API -> DB: SELECT PR (id)
+API -> API: 404 PULL_REQUEST_NOT_FOUND bila tidak ada\n403 REVIEW_AUTHOR_NOT_ALLOWED bila reviewer = penulis\n409 PULL_REQUEST_NOT_OPEN bila status bukan Open
+
+== Transaksi 1 — cadangkan review ==
+API -> DB: BEGIN
+API -> DB: SELECT PR ... FOR UPDATE (lockForUpdate)
+API -> DB: UPSERT code_review\n(sync_status=pending, menggantikan\nreview lama reviewer sama)
+API -> DB: COMMIT
+
+== Sinkronisasi ke GitHub ==
+API -> GH: createPullRequestReview(number, event, body)
+activate GH
+GH -> GIT: POST /repos/{owner}/{repo}/pulls/{number}/reviews
+GIT --> GH: 200/201 {id, state, submitted_at} | error
+deactivate GH
+
+alt Sinkronisasi sukses
+    API -> DB: BEGIN
+    API -> DB: SELECT PR ... FOR UPDATE
+    API -> DB: bila review_state masih pending:\n  review.sync_status=synced, synced_at\n  PR.review_state = approved|changes_requested
+    opt decision = request_changes
+        API -> DB: UPDATE maintenance_backlog\nstatus = 'Sedang Dikerjakan' (BR-20)
+    end
+    API -> DB: COMMIT
+    API --> R: 200 {message: "...disetujui..." /\n"Perubahan memerlukan perbaikan.",\nmeta.sync.status=synced}
+else Sinkronisasi gagal
+    API -> DB: BEGIN
+    API -> DB: review.sync_status=gagal,\nlast_sync_error_code
+    API -> DB: COMMIT\n(PR tetap Open, review_state tetap pending)
+    API --> R: 200 + peringatan meta.sync={status:gagal}\n(review tersimpan, keputusan belum berlaku)
+end
+deactivate API
+
+== Setelah approve (di luar W14-01) ==
+note over API, GIT
+  Status backlog 'Selesai' hanya saat sinkronisasi GitHub
+  melaporkan PR merged (BR-22, FR-UC06-16).
+  Ready for Merge = label tampilan saat review_state=approved.
+end note
+@enduml
