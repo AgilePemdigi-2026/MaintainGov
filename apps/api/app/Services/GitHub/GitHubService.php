@@ -279,6 +279,66 @@ class GitHubService
     }
 
     /**
+     * UC06 (FR-UC06-11): submit a review decision to GitHub. `event` is
+     * APPROVE or REQUEST_CHANGES; `body` is the review note (required by
+     * GitHub for REQUEST_CHANGES). Only 200/201 responses with a known
+     * review state are accepted as synchronization evidence.
+     */
+    public function createPullRequestReview(int $number, string $event, ?string $body): GitHubApiResult
+    {
+        if ($number < 1) {
+            return GitHubApiResult::failure(
+                'GITHUB_INVALID_PULL_REQUEST',
+                'Nomor Pull Request tidak valid.',
+                422,
+            );
+        }
+
+        $config = $this->configuration();
+
+        if ($config === null) {
+            return $this->notConfigured();
+        }
+
+        $url = $config['api_url'].'/repos/'.rawurlencode($config['owner']).'/'.rawurlencode($config['repository'])
+            .'/pulls/'.$number.'/reviews';
+
+        return $this->callAndValidate(
+            fn () => $this->http($config)->post($url, array_filter([
+                'event' => $event,
+                'body' => $body,
+            ], fn ($value): bool => $value !== null)),
+            fn (array $payload): ?array => $this->normalizePullRequestReview($payload),
+            [200, 201],
+        );
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function normalizePullRequestReview(array $payload): ?array
+    {
+        $id = $payload['id'] ?? null;
+        $state = $payload['state'] ?? null;
+        $submittedAt = $payload['submitted_at'] ?? null;
+        $htmlUrl = $payload['html_url'] ?? null;
+
+        if (! is_int($id)
+            || ! is_string($state)
+            || ! in_array($state, ['APPROVED', 'CHANGES_REQUESTED', 'COMMENTED'], true)
+            || ! is_string($submittedAt) || $submittedAt === '') {
+            return null;
+        }
+
+        return [
+            'github_review_id' => $id,
+            'state' => $state,
+            'submitted_at' => $submittedAt,
+            'html_url' => is_string($htmlUrl) && $htmlUrl !== '' ? $htmlUrl : null,
+        ];
+    }
+
+    /**
      * @return array{token: string, owner: string, repository: string, api_url: string, timeout: int, connect_timeout: int}|null
      */
     private function configuration(): ?array

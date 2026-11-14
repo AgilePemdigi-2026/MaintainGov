@@ -4,11 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Exceptions\ApiException;
 use App\Http\Requests\ListBranchesRequest;
+use App\Http\Requests\ListPullRequestRequest;
 use App\Http\Requests\StorePullRequestRequest;
+use App\Http\Requests\StorePullRequestReviewRequest;
 use App\Models\MaintenanceBacklog;
 use App\Services\GitHub\GitHubErrorMapper;
 use App\Services\GitHub\GitHubService;
 use App\Services\Maintenance\MaintenanceIssueService;
+use App\Services\PullRequest\PullRequestReviewService;
 use App\Services\PullRequest\PullRequestService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -16,9 +19,35 @@ use Illuminate\Http\Request;
 /**
  * UC05 Pull Request endpoints. The real GitHub PR is created before a success
  * response is returned; metadata is persisted in `pull_request`.
+ *
+ * UC06 (W14-01) adds the review list/detail endpoints and the review decision
+ * endpoint; see contracts/uc06-api.md.
  */
 class PullRequestController extends Controller
 {
+    /**
+     * UC06 (FR-UC06-01): paginated PR list with an SRS status filter.
+     */
+    public function list(ListPullRequestRequest $request, PullRequestReviewService $reviews): JsonResponse
+    {
+        $status = $request->filled('status')
+            ? (string) $request->validated('status')
+            : null;
+
+        $result = $reviews->list(
+            $status,
+            (int) ($request->validated('per_page') ?? 25),
+            (int) ($request->validated('page') ?? 1),
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Daftar Pull Request.',
+            'data' => $result['data'],
+            'meta' => $result['meta'],
+        ]);
+    }
+
     public function index(int $issue, PullRequestService $pullRequests): JsonResponse
     {
         $data = $pullRequests->listForBacklog($issue);
@@ -55,12 +84,38 @@ class PullRequestController extends Controller
         ], $result['created'] ? 201 : 200);
     }
 
-    public function show(int $pullRequest, PullRequestService $pullRequests): JsonResponse
+    public function show(int $pullRequest, PullRequestReviewService $reviews): JsonResponse
     {
         return response()->json([
             'success' => true,
             'message' => 'Detail Pull Request.',
-            'data' => $pullRequests->show($pullRequest),
+            'data' => $reviews->detail($pullRequest),
+        ]);
+    }
+
+    /**
+     * UC06 (FR-UC06-07..11): store the review decision, sync it to GitHub,
+     * and apply the PR/backlog transitions only on successful sync.
+     */
+    public function storeReview(
+        StorePullRequestReviewRequest $request,
+        int $pullRequest,
+        PullRequestReviewService $reviews,
+    ): JsonResponse {
+        $result = $reviews->submitReview(
+            $pullRequest,
+            $request->user(),
+            (string) $request->validated('decision'),
+            $request->validated('comment') !== null
+                ? (string) $request->validated('comment')
+                : null,
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => $result['message'],
+            'data' => $result['data'],
+            'meta' => $result['meta'],
         ]);
     }
 

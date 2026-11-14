@@ -4,6 +4,7 @@ use App\Http\Controllers\AnalysisController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\MaintenanceBacklogController;
 use App\Http\Controllers\MaintenanceCaseController;
+use App\Http\Controllers\PullRequestController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -30,6 +31,10 @@ Route::prefix('v1')->group(function () {
     Route::middleware(['auth', 'role:Tim Maintenance,Developer'])->group(function () {
         Route::get('/maintenance-backlog', [MaintenanceBacklogController::class, 'index']);
         Route::get('/maintenance-backlog/{id}', [MaintenanceBacklogController::class, 'show'])->whereNumber('id');
+
+        // UC06 / Status dan Riwayat (BR-23): timeline case, read-only.
+        Route::get('/maintenance-cases/{case}/history', [MaintenanceCaseController::class, 'history'])
+            ->whereNumber('case');
     });
     Route::patch('/maintenance-backlog/{id}', [MaintenanceBacklogController::class, 'update'])
         ->whereNumber('id')
@@ -58,6 +63,13 @@ Route::prefix('v1')->group(function () {
         Route::get('/dashboard', function () {
             return response()->json(['success' => true, 'message' => 'Dashboard Developer.']);
         });
+    });
+
+    // UC06: review Pull Request (Developer; lihat D-W14-01-a/g).
+    Route::middleware(['auth', 'role:Developer'])->group(function () {
+        Route::get('/pull-requests', [PullRequestController::class, 'list']);
+        Route::post('/pull-requests/{pullRequest}/reviews', [PullRequestController::class, 'storeReview'])
+            ->whereNumber('pullRequest');
     });
 
     // GitHub connection check and UC04-UC05 contract stubs.
