@@ -1,0 +1,141 @@
+# MaintainGov / Coolify: single public domain -> Next.js rewrites /api/v1 to Laravel.
+# Secrets are set in Coolify > Environment Variables, never in this file.
+services:
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        NEXT_PUBLIC_API_BASE_URL: /api/v1
+        NEXT_PUBLIC_SPRINT2_MOCK: "0"
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      HOSTNAME: 0.0.0.0
+      INTERNAL_API_ORIGIN: http://api:80
+      NEXT_PUBLIC_API_BASE_URL: /api/v1
+      NEXT_PUBLIC_SPRINT2_MOCK: "0"
+      NEXT_TELEMETRY_DISABLED: "1"
+    expose:
+      - "3000"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/login').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+    restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    environment: &api_environment
+      APP_NAME: MaintainGov
+      APP_ENV: production
+      APP_DEBUG: "false"
+      APP_KEY: ${APP_KEY:?Set APP_KEY in Coolify}
+      APP_URL: ${APP_URL:?Set the public HTTPS frontend URL}
+      FRONTEND_URL: ${APP_URL:?Set the public HTTPS frontend URL}
+      APP_LOCALE: id
+      APP_FALLBACK_LOCALE: id
+      LOG_CHANNEL: stderr
+      LOG_LEVEL: warning
+      DB_CONNECTION: mysql
+      DB_HOST: db
+      DB_PORT: "3306"
+      DB_DATABASE: ${DB_DATABASE:-maintaingov}
+      DB_USERNAME: ${DB_USERNAME:-maintaingov}
+      DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in Coolify}
+      SESSION_DRIVER: database
+      SESSION_SECURE_COOKIE: "true"
+      SESSION_SAME_SITE: lax
+      SESSION_LIFETIME: "120"
+      QUEUE_CONNECTION: database
+      DB_QUEUE_RETRY_AFTER: "240"
+      CACHE_STORE: database
+      ANALYSIS_SERVICE_URL: http://analysis:8001
+      ANALYSIS_TIMEOUT: "120"
+      GITHUB_API_URL: https://api.github.com
+      GITHUB_REPOSITORY_OWNER: AgilePemdigi-2026
+      GITHUB_REPOSITORY_NAME: MaintainGov
+      GITHUB_DEFAULT_BRANCH: main
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      GITHUB_WEBHOOK_SECRET: ${GITHUB_WEBHOOK_SECRET:-}
+      GITHUB_MOCK_ENABLED: "false"
+    expose:
+      - "80"
+    volumes:
+      - api_storage:/var/www/html/storage
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "php", "-r", "exit(@file_get_contents('http://127.0.0.1/up')===false?1:0);"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    restart: unless-stopped
+
+  queue:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    command: ["php", "artisan", "queue:work", "--sleep=1", "--tries=1", "--timeout=180", "--max-time=3600"]
+    user: www-data
+    working_dir: /var/www/html
+    environment: *api_environment
+    volumes:
+      - api_storage:/var/www/html/storage
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  analysis:
+    build:
+      context: .
+      dockerfile: services/analysis/Dockerfile
+    environment:
+      UC01_ARTIFACT_DIR: /app/artifacts
+      PYTHONUNBUFFERED: "1"
+    expose:
+      - "8001"
+    volumes:
+      # Load the three private Colab model artifacts into this volume before
+      # expecting FastAPI to become healthy. Do not commit .joblib to Git.
+      - analysis_artifacts:/app/artifacts:ro
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/internal/health',timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    restart: unless-stopped
+
+  db:
+    image: mysql:8.0
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE:-maintaingov}
+      MYSQL_USER: ${DB_USERNAME:-maintaingov}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in Coolify}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?Set DB_ROOT_PASSWORD in Coolify}
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -p\"$$MYSQL_ROOT_PASSWORD\" --silent"]
+      interval: 15s
+      timeout: 5s
+      retries: 15
+      start_period: 45s
+    restart: unless-stopped
+
+volumes:
+  mysql_data:
+  api_storage:
+  analysis_artifacts:
