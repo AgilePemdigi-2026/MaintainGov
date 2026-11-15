@@ -426,7 +426,7 @@ class GitHubWebhookTest extends Uc04Uc05TestCase
         $this->assertDatabaseHas('code_review', [
             'pull_request_id' => $fixture['record']->pull_request_id,
             'reviewer_id' => $reviewer->user_id,
-            'github_state' => 'APPROVED',
+            'decision' => 'Approved',
         ]);
         $this->assertDatabaseHas('maintenance_backlog', [
             'backlog_id' => $fixture['issue']['backlog_id'],

@@ -622,7 +622,11 @@ class PullRequestService
     }
 
     /**
-     * Public presenter reused by UC06 without duplicating field mapping.
+    /**
+     * Shared UC05/UC06 API representation. The `status` field keeps the UC05
+     * contract (lifecycle_state ?? submission_state); UC06 review fields are
+     * additive: review_state, review_status (SRS label), ready_for_merge and
+     * status_label reflecting "Ready for Merge" (D-W14-01-b, contracts/uc06-api.md §3).
      *
      * @return array<string, mixed>
      */
@@ -634,9 +638,20 @@ class PullRequestService
     /**
      * @return array<string, mixed>
      */
-    private function map(PullRequest $pullRequest): array
+    public function map(PullRequest $pullRequest): array
     {
         $status = $pullRequest->lifecycle_state ?? $pullRequest->submission_state;
+
+        $reviewState = $pullRequest->review_state ?? 'pending';
+        $reviewStatus = match (true) {
+            $pullRequest->lifecycle_state === 'merged' => 'Merged',
+            $pullRequest->lifecycle_state === 'closed' => 'Closed',
+            $reviewState === 'approved' => 'Approved',
+            $reviewState === 'changes_requested' => 'Changes Requested',
+            $pullRequest->lifecycle_state === 'open' => 'Open',
+            default => $status,
+        };
+        $readyForMerge = $reviewState === 'approved' && $pullRequest->lifecycle_state === 'open';
 
         return [
             'pull_request_id' => (int) $pullRequest->pull_request_id,
@@ -665,12 +680,14 @@ class PullRequestService
             'github_pr_number' => $pullRequest->github_pr_number,
             'github_pr_url' => $pullRequest->github_pr_url,
             'status' => $status,
+            'review_state' => $reviewState,
+            'review_status' => $reviewStatus,
+            'ready_for_merge' => $readyForMerge,
             'github_pr_status' => $pullRequest->lifecycle_state,
-            'status_label' => Str::ucfirst((string) $status),
+            'status_label' => $readyForMerge ? 'Ready for Merge' : Str::ucfirst((string) $status),
             'submission_state' => $pullRequest->submission_state,
             'lifecycle_state' => $pullRequest->lifecycle_state,
             'is_draft' => (bool) $pullRequest->is_draft,
-            'review_state' => $pullRequest->review_state,
             'merged_at' => $pullRequest->merged_at?->toIso8601String(),
             'closed_at' => $pullRequest->closed_at?->toIso8601String(),
             'github_created_at' => $pullRequest->github_created_at?->toIso8601String(),

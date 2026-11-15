@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\PullRequest\PullRequestReviewService;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -62,6 +63,19 @@ class MaintenanceCaseController extends Controller
         return response()->json([
             'success' => true, 'message' => 'Detail maintenance case.',
             'data' => ['case' => $case, 'reviews' => $reviews],
+        ]);
+    }
+
+    /**
+     * UC06 / Status dan Riwayat (BR-23): timeline Case -> Backlog -> Issue ->
+     * PR -> Review. Read-only for both roles; see contracts/uc06-api.md §4.4.
+     */
+    public function history(int $caseId, PullRequestReviewService $history): JsonResponse
+    {
+        return response()->json([
+            'success' => true,
+            'message' => 'Riwayat maintenance case.',
+            'data' => $history->historyForCase($caseId),
         ]);
     }
 
