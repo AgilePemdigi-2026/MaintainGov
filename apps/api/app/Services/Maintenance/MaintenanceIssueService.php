@@ -5,6 +5,7 @@ namespace App\Services\Maintenance;
 use App\Exceptions\ApiException;
 use App\Models\MaintenanceBacklog;
 use App\Models\Pengguna;
+use App\Services\GitHub\BranchPreparationService;
 use App\Services\GitHub\GitHubRepositoryService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -21,10 +22,12 @@ class MaintenanceIssueService
     private const ACTIVE_STATUSES = [
         MaintenanceBacklog::STATUS_IN_PROGRESS,
         MaintenanceBacklog::STATUS_READY_PULL_REQUEST,
+        MaintenanceBacklog::STATUS_READY_MERGE,
     ];
 
     public function __construct(
         private readonly GitHubRepositoryService $repositories,
+        private readonly BranchPreparationService $branches,
     ) {}
 
     /**
@@ -163,8 +166,38 @@ class MaintenanceIssueService
 
         $data = $this->findData($backlogId);
         $data['message'] = 'Issue berhasil diambil.';
+        $data['branch_preparation'] = $this->branches->ensure($branch);
 
         return $data;
+    }
+
+    /**
+     * Retry creating the source branch on GitHub without changing assignment.
+     *
+     * @return array<string, mixed>
+     */
+    public function prepareBranch(int $backlogId, Pengguna $developer): array
+    {
+        $issue = $this->findData($backlogId);
+        $this->assertAssignee($issue, $developer);
+
+        $branch = $issue['source_branch'] ?? null;
+
+        if (! is_string($branch) || trim($branch) === '') {
+            throw ApiException::conflict(
+                'Branch sumber issue belum ditetapkan.',
+                'ISSUE_BRANCH_NOT_SET',
+            );
+        }
+
+        if (! in_array($issue['status'], self::ACTIVE_STATUSES, true)) {
+            throw ApiException::conflict(
+                'Branch hanya dapat disiapkan saat issue sedang dikerjakan.',
+                'ISSUE_NOT_PREPARABLE',
+            );
+        }
+
+        return $this->branches->ensure($branch);
     }
 
     /**
@@ -260,9 +293,11 @@ class MaintenanceIssueService
                 ? Carbon::parse($pushedAt)
                 : now();
 
-            $newStatus = $backlog->status === MaintenanceBacklog::STATUS_IN_PROGRESS
-                ? MaintenanceBacklog::STATUS_READY_PULL_REQUEST
-                : $backlog->status;
+            $newStatus = match ($backlog->status) {
+                MaintenanceBacklog::STATUS_IN_PROGRESS => MaintenanceBacklog::STATUS_READY_PULL_REQUEST,
+                MaintenanceBacklog::STATUS_READY_MERGE => MaintenanceBacklog::STATUS_READY_PULL_REQUEST,
+                default => $backlog->status,
+            };
 
             DB::table('maintenance_backlog')
                 ->where('backlog_id', $backlogId)
@@ -301,6 +336,7 @@ class MaintenanceIssueService
             MaintenanceBacklog::STATUS_READY_DEVELOPMENT,
             MaintenanceBacklog::STATUS_IN_PROGRESS,
             MaintenanceBacklog::STATUS_READY_PULL_REQUEST,
+            MaintenanceBacklog::STATUS_READY_MERGE,
             MaintenanceBacklog::STATUS_DONE,
         ];
     }

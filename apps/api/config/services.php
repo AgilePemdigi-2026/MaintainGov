@@ -19,6 +19,7 @@ return [
     */
     'github' => [
         'api_url' => env('GITHUB_API_URL', 'https://api.github.com'),
+        'api_version' => env('GITHUB_API_VERSION', '2022-11-28'),
         'owner' => env('GITHUB_REPOSITORY_OWNER', 'AgilePemdigi-2026'),
         'repository' => env('GITHUB_REPOSITORY_NAME', 'MaintainGov'),
         'token' => env('GITHUB_TOKEN'),

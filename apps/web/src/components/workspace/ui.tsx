@@ -3,8 +3,8 @@
 import { useEffect } from "react";
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { BACKLOG_STATUS_LABEL, BACKLOG_STATUS_TONE, CASE_STATUS_TONE, PRIORITY_SCALE, severityTone } from "@/lib/sprint2/labels";
-import type { BacklogStatus, CaseStatus } from "@/lib/sprint2/types";
+import { BACKLOG_STATUS_LABEL, BACKLOG_STATUS_TONE, CASE_STATUS_TONE, PR_LIFECYCLE_LABEL, PR_LIFECYCLE_TONE, PRIORITY_SCALE, REVIEW_DECISION_LABEL, REVIEW_DECISION_TONE, REVIEW_STATE_LABEL, REVIEW_STATE_TONE, severityTone } from "@/lib/sprint2/labels";
+import type { BacklogStatus, CaseStatus, PullRequestReviewState } from "@/lib/sprint2/types";
 
 export function PageHeader({ crumbs, title, meta, actions }: {
   crumbs: { label: string; href?: string }[];
@@ -48,6 +48,30 @@ export function CaseStatusPill({ status }: { status: CaseStatus }) {
 
 export function BacklogStatusPill({ status }: { status: BacklogStatus }) {
   return <span className={`ws-pill ws-pill--${BACKLOG_STATUS_TONE[status] ?? "muted"}`}>{BACKLOG_STATUS_LABEL[status] ?? status}</span>;
+}
+
+/** Status lifecycle Pull Request dari GitHub (open/closed/merged). */
+export function PullRequestStatusPill({ status }: { status: string }) {
+  const normalized = status.toLowerCase();
+  return (
+    <span className={`ws-pill ws-pill--${PR_LIFECYCLE_TONE[normalized] ?? "muted"}`}>
+      {PR_LIFECYCLE_LABEL[normalized] ?? status}
+    </span>
+  );
+}
+
+/** Ringkasan keputusan review gabungan (pending/approved/changes_requested). */
+export function ReviewStatePill({ state }: { state: PullRequestReviewState }) {
+  return <span className={`ws-pill ws-pill--${REVIEW_STATE_TONE[state]}`}>{REVIEW_STATE_LABEL[state]}</span>;
+}
+
+export function ReviewDecisionPill({ decision }: { decision: string }) {
+  const normalized = decision.toLowerCase();
+  return (
+    <span className={`ws-pill ws-pill--${REVIEW_DECISION_TONE[normalized] ?? "muted"}`}>
+      {REVIEW_DECISION_LABEL[normalized] ?? decision}
+    </span>
+  );
 }
 
 export function PriorityBar({ score }: { score: number }) {

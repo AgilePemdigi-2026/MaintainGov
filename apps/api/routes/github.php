@@ -25,6 +25,8 @@ Route::prefix('developer/maintenance-issues')->middleware(['auth', 'role:Develop
 Route::middleware(['auth', 'role:Developer'])->group(function () {
     Route::post('/maintenance-backlogs/{issue}/claim', [MaintenanceIssueController::class, 'claim'])
         ->whereNumber('issue');
+    Route::post('/maintenance-backlogs/{issue}/branch', [MaintenanceIssueController::class, 'prepareBranch'])
+        ->whereNumber('issue');
     Route::get('/maintenance-backlogs/{issue}/push-status', [MaintenanceIssueController::class, 'pushStatus'])
         ->whereNumber('issue');
     Route::post('/maintenance-backlogs/{issue}/push-verifications', [MaintenanceIssueController::class, 'verifyPush'])
@@ -38,7 +40,14 @@ Route::middleware(['auth', 'role:Developer'])->group(function () {
         ->whereNumber('issue');
     Route::post('/maintenance-backlogs/{issue}/pull-requests/reconcile', [PullRequestController::class, 'reconcile'])
         ->whereNumber('issue');
+});
+
+// UC06 read + synchronization. The reviewer and author may both read
+// a Pull Request and sync it with GitHub.
+Route::middleware(['auth', 'role:Tim Maintenance,Developer'])->group(function () {
     Route::get('/pull-requests/{pullRequest}', [PullRequestController::class, 'show'])
+        ->whereNumber('pullRequest');
+    Route::post('/pull-requests/{pullRequest}/sync', [PullRequestController::class, 'sync'])
         ->whereNumber('pullRequest');
 });
 

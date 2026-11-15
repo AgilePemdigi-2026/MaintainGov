@@ -5,6 +5,7 @@ namespace App\Services\GitHub;
 use App\Exceptions\ApiException;
 use App\Models\GitHubWebhookDelivery;
 use App\Services\Maintenance\MaintenanceIssueService;
+use App\Services\PullRequest\PullRequestReviewService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
@@ -22,6 +23,7 @@ class GitHubWebhookService
         private readonly PushVerificationService $pushVerification,
         private readonly MaintenanceIssueService $issues,
         private readonly WebhookDeliveryService $deliveries,
+        private readonly PullRequestReviewService $pullRequests,
     ) {}
 
     /**
@@ -200,7 +202,7 @@ class GitHubWebhookService
             ];
         }
 
-        if ($event !== 'push') {
+        if (! in_array($event, ['push', 'pull_request', 'pull_request_review'], true)) {
             $this->deliveries->markIgnored($delivery, null, 'unsupported_event');
 
             return $this->ignored($deliveryId, 'unsupported_event');
@@ -217,6 +219,24 @@ class GitHubWebhookService
             );
         }
 
+        return match ($event) {
+            'push' => $this->processPush($delivery, $deliveryId, $payload, $context),
+            'pull_request' => $this->processPullRequest($delivery, $deliveryId, $payload, $context),
+            'pull_request_review' => $this->processPullRequestReview($delivery, $deliveryId, $payload, $context),
+        };
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @param  array<string, mixed>  $context
+     * @return array{http_status: int, payload: array<string, mixed>}
+     */
+    private function processPush(
+        GitHubWebhookDelivery $delivery,
+        string $deliveryId,
+        array $payload,
+        array $context,
+    ): array {
         $ref = (string) ($context['ref'] ?? '');
 
         if (! str_starts_with($ref, 'refs/heads/')) {
@@ -286,6 +306,143 @@ class GitHubWebhookService
                 ],
             ],
         ];
+    }
+
+    /**
+     * pull_request events: opened, synchronize, reopened, closed. The payload
+     * is only a trigger; the latest PR/merge state is read from GitHub so
+     * out-of-order deliveries cannot roll the local snapshot backwards.
+     *
+     * @param  array<string, mixed>  $payload
+     * @param  array<string, mixed>  $context
+     * @return array{http_status: int, payload: array<string, mixed>}
+     */
+    private function processPullRequest(
+        GitHubWebhookDelivery $delivery,
+        string $deliveryId,
+        array $payload,
+        array $context,
+    ): array {
+        $action = (string) ($context['action'] ?? '');
+
+        if (! in_array($action, ['opened', 'synchronize', 'reopened', 'closed'], true)) {
+            $this->deliveries->markIgnored($delivery, null, 'unsupported_action');
+
+            return $this->ignored($deliveryId, 'unsupported_action');
+        }
+
+        $number = $this->pullRequestNumber($payload);
+
+        if ($number === null) {
+            throw new ApiException(
+                'WEBHOOK_INVALID_PAYLOAD',
+                'Payload Pull Request tidak valid.',
+                400,
+            );
+        }
+
+        $record = $this->pullRequests->refreshByNumber($number);
+
+        if ($record === null) {
+            $this->deliveries->markIgnored($delivery, null, 'no_matching_pull_request');
+
+            return $this->ignored($deliveryId, 'no_matching_pull_request');
+        }
+
+        $this->deliveries->markProcessed($delivery, (int) $record->backlog_id);
+
+        $message = match (true) {
+            $record->lifecycle_state === 'merged' => 'Pull Request telah di-merge. Issue ditandai Selesai.',
+            $record->lifecycle_state === 'closed' => 'Pull Request ditutup tanpa merge. Issue tidak ditandai Selesai.',
+            default => 'Status Pull Request berhasil disinkronkan dengan GitHub.',
+        };
+
+        return [
+            'http_status' => 200,
+            'payload' => [
+                'success' => true,
+                'message' => $message,
+                'data' => [
+                    'status' => 'processed',
+                    'delivery_id' => $deliveryId,
+                    'pull_request_id' => (int) $record->pull_request_id,
+                    'github_pr_number' => (int) $record->github_pr_number,
+                    'lifecycle_state' => $record->lifecycle_state,
+                    'review_state' => $record->review_state,
+                    'issue_status' => $record->backlog?->status,
+                ],
+            ],
+        ];
+    }
+
+    /**
+     * pull_request_review events: submitted, dismissed (edited is treated as a
+     * refresh). Review state is recomputed from GitHub's review list, never
+     * from the webhook body alone.
+     *
+     * @param  array<string, mixed>  $payload
+     * @param  array<string, mixed>  $context
+     * @return array{http_status: int, payload: array<string, mixed>}
+     */
+    private function processPullRequestReview(
+        GitHubWebhookDelivery $delivery,
+        string $deliveryId,
+        array $payload,
+        array $context,
+    ): array {
+        $action = (string) ($context['action'] ?? '');
+
+        if (! in_array($action, ['submitted', 'dismissed', 'edited'], true)) {
+            $this->deliveries->markIgnored($delivery, null, 'unsupported_action');
+
+            return $this->ignored($deliveryId, 'unsupported_action');
+        }
+
+        $number = $this->pullRequestNumber($payload);
+
+        if ($number === null) {
+            throw new ApiException(
+                'WEBHOOK_INVALID_PAYLOAD',
+                'Payload Pull Request Review tidak valid.',
+                400,
+            );
+        }
+
+        $record = $this->pullRequests->refreshByNumber($number);
+
+        if ($record === null) {
+            $this->deliveries->markIgnored($delivery, null, 'no_matching_pull_request');
+
+            return $this->ignored($deliveryId, 'no_matching_pull_request');
+        }
+
+        $this->deliveries->markProcessed($delivery, (int) $record->backlog_id);
+
+        return [
+            'http_status' => 200,
+            'payload' => [
+                'success' => true,
+                'message' => 'Review Pull Request berhasil disinkronkan dengan GitHub.',
+                'data' => [
+                    'status' => 'processed',
+                    'delivery_id' => $deliveryId,
+                    'pull_request_id' => (int) $record->pull_request_id,
+                    'github_pr_number' => (int) $record->github_pr_number,
+                    'review_state' => $record->review_state,
+                    'issue_status' => $record->backlog?->status,
+                ],
+            ],
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function pullRequestNumber(array $payload): ?int
+    {
+        $number = data_get($payload, 'pull_request.number') ?? data_get($payload, 'number');
+
+        return is_int($number) && $number > 0 ? $number : null;
     }
 
     private function assertFresh(mixed $pushedAt): void

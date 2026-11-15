@@ -8,6 +8,7 @@ use App\Models\MaintenanceBacklog;
 use App\Models\Pengguna;
 use App\Models\PullRequest;
 use App\Services\GitHub\GitHubApiResult;
+use App\Services\GitHub\GitHubErrorMapper;
 use App\Services\GitHub\GitHubService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -39,13 +40,13 @@ class PullRequestReviewService
      *
      * @return array{data: array<int, array<string, mixed>>, meta: array<string, int>}
      */
-    public function list(?string $status, int $perPage, int $page): array
+    public function list(?string $status = null, int $perPage = 25, int $page = 1): array
     {
         $query = PullRequest::query()
             ->with(['developer', 'repository', 'reviews.reviewer'])
             ->withCount('reviews');
 
-        if ($status !== null) {
+        if ($status !== null && trim($status) !== '') {
             $query->where($this->statusCondition($status));
         }
 
@@ -69,37 +70,158 @@ class PullRequestReviewService
     }
 
     /**
+     * Filtered PR list for a specific user.
+     *
+     * @param  array{status?: string|null, search?: string|null, page?: int, per_page?: int}  $filters
+     * @return array{data: array<int, array<string, mixed>>, meta: array<string, int|string>}
+     */
+    public function listForUser(Pengguna $user, array $filters = []): array
+    {
+        $query = PullRequest::query()
+            ->with(['developer', 'repository', 'backlog'])
+            ->withCount('reviews')
+            ->where('submission_state', 'created');
+
+        if ($user->role === 'Developer') {
+            $query->where('developer_id', $user->user_id);
+        }
+
+        $status = strtolower((string) ($filters['status'] ?? 'open'));
+
+        if ($status !== '' && $status !== 'all') {
+            if ($status === 'open') {
+                $query->where(function ($builder): void {
+                    $builder->where('lifecycle_state', 'open')
+                        ->orWhereNull('lifecycle_state');
+                });
+            } else {
+                $query->where('lifecycle_state', $status);
+            }
+        }
+
+        $search = trim((string) ($filters['search'] ?? ''));
+
+        if ($search !== '') {
+            $like = '%'.str_replace(['%', '_'], ['\%', '\_'], $search).'%';
+            $query->where(function ($builder) use ($like): void {
+                $builder->where('title', 'like', $like)
+                    ->orWhere('source_branch', 'like', $like)
+                    ->orWhere('github_pr_number', is_numeric($search) ? (int) $search : -1);
+            });
+        }
+
+        $perPage = max(1, min(100, (int) ($filters['per_page'] ?? 25)));
+        $page = max(1, (int) ($filters['page'] ?? 1));
+        $paginator = $query
+            ->orderByDesc('github_updated_at')
+            ->orderByDesc('pull_request_id')
+            ->paginate($perPage, ['*'], 'page', $page);
+
+        return [
+            'data' => array_map(
+                fn (PullRequest $record): array => $this->presentSummary($record),
+                $paginator->items(),
+            ),
+            'meta' => [
+                'current_page' => $paginator->currentPage(),
+                'last_page' => $paginator->lastPage(),
+                'per_page' => $paginator->perPage(),
+                'total' => $paginator->total(),
+                'status' => $status === '' ? 'open' : $status,
+            ],
+        ];
+    }
+
+    /**
      * PR detail with reviews and the case/backlog link (FR-UC06-02..04).
+     * Supports both int $pullRequestId and (PullRequest $record, ?Pengguna $user, bool $refresh).
      *
      * @return array<string, mixed>
      */
-    public function detail(int $pullRequestId): array
+    public function detail(int|PullRequest $pullRequest, ?Pengguna $user = null, bool $refresh = false): array
     {
-        $pullRequest = PullRequest::query()
+        $pullRequestId = $pullRequest instanceof PullRequest
+            ? (int) $pullRequest->pull_request_id
+            : (int) $pullRequest;
+
+        $record = PullRequest::query()
             ->with(['developer', 'repository', 'reviews.reviewer', 'backlog.case', 'backlog.assignee'])
             ->withCount('reviews')
             ->find($pullRequestId);
 
-        if ($pullRequest === null) {
+        if ($record === null) {
             throw ApiException::notFound(
                 'Pull Request tidak ditemukan.',
                 'PULL_REQUEST_NOT_FOUND',
             );
         }
 
-        $data = $this->pullRequests->map($pullRequest);
-        $sorted = $this->sortedReviews($pullRequest);
-        $data['review_count'] = (int) $pullRequest->reviews_count;
+        if ($user !== null) {
+            $this->assertCanView($record, $user);
+        }
+
+        if ($refresh && $record->submission_state === 'created') {
+            $record = $this->refresh($record);
+        }
+
+        $data = $this->pullRequests->map($record);
+        $sorted = $this->sortedReviews($record);
+        $data['review_count'] = (int) $record->reviews_count;
         $data['last_review'] = $sorted->first() === null
             ? null
             : $this->mapReview($sorted->first());
-        $data['issue'] = $pullRequest->backlog === null ? null : $this->mapIssue($pullRequest->backlog);
+        $data['issue'] = $record->backlog === null ? null : $this->mapIssue($record->backlog);
         $data['reviews'] = $sorted
             ->map(fn (CodeReview $review): array => $this->mapReview($review))
             ->values()
             ->all();
 
+        // Also add author helper for compatibility
+        $data['author'] = $this->presentAuthor($record);
+
         return $data;
+    }
+
+    /**
+     * Fetch the PR and its reviews from GitHub and persist the authoritative
+     * snapshot. Safe to call repeatedly.
+     */
+    public function refresh(PullRequest $record): PullRequest
+    {
+        $this->assertSyncedPullRequest($record);
+        $number = (int) $record->github_pr_number;
+
+        $pullRequest = $this->github->getPullRequest($number);
+
+        if (! $pullRequest->success || ! is_array($pullRequest->data)) {
+            throw GitHubErrorMapper::toApiException($pullRequest);
+        }
+
+        $reviews = $this->github->listPullRequestReviews($number);
+
+        if (! $reviews->success || ! is_array($reviews->data)) {
+            throw GitHubErrorMapper::toApiException($reviews);
+        }
+
+        return $this->applySnapshot($record, $pullRequest->data, $reviews->data);
+    }
+
+    /**
+     * Webhook entry point. A PR created outside MaintainGov is not linked and
+     * must be ignored instead of guessed.
+     */
+    public function refreshByNumber(int $number): ?PullRequest
+    {
+        $record = PullRequest::query()
+            ->where('github_pr_number', $number)
+            ->where('submission_state', 'created')
+            ->first();
+
+        if ($record === null) {
+            return null;
+        }
+
+        return $this->refresh($record);
     }
 
     /**
@@ -108,51 +230,67 @@ class PullRequestReviewService
      *
      * @return array{message: string, data: array<string, mixed>, meta: array<string, mixed>}
      */
-    public function submitReview(int $pullRequestId, Pengguna $reviewer, string $decision, ?string $comment): array
-    {
-        $decisionValue = $decision === 'approve'
+    public function submitReview(
+        int|PullRequest $pullRequest,
+        Pengguna $reviewer,
+        array|string $decision,
+        ?string $comment = null,
+        ?string $idempotencyKey = null,
+    ): array {
+        $pullRequestId = $pullRequest instanceof PullRequest
+            ? (int) $pullRequest->pull_request_id
+            : (int) $pullRequest;
+
+        if (is_array($decision)) {
+            $rawDecision = (string) ($decision['decision'] ?? '');
+            $comment = $decision['notes'] ?? ($decision['comment'] ?? $comment);
+            $idempotencyKey = $comment !== null && is_string($comment) ? $comment : $idempotencyKey;
+        } else {
+            $rawDecision = $decision;
+        }
+
+        $normalized = strtolower(trim($rawDecision));
+        $decisionValue = in_array($normalized, ['approve', 'approved'], true)
             ? CodeReview::DECISION_APPROVE
             : CodeReview::DECISION_REQUEST_CHANGES;
         $githubEvent = $decisionValue === CodeReview::DECISION_APPROVE ? 'APPROVE' : 'REQUEST_CHANGES';
 
-        $pullRequest = PullRequest::query()->find($pullRequestId);
+        $record = PullRequest::query()->find($pullRequestId);
 
-        if ($pullRequest === null) {
+        if ($record === null) {
             throw ApiException::notFound(
                 'Pull Request tidak ditemukan.',
                 'PULL_REQUEST_NOT_FOUND',
             );
         }
 
-        if ((int) $pullRequest->developer_id === (int) $reviewer->user_id) {
+        if ((int) $record->developer_id === (int) $reviewer->user_id) {
             throw ApiException::forbidden(
                 'Penulis Pull Request tidak dapat memberi review pada PR-nya sendiri.',
                 'REVIEW_AUTHOR_NOT_ALLOWED',
             );
         }
 
-        if (! $this->isOpen($pullRequest)) {
+        if (! $this->isOpen($record)) {
             throw ApiException::conflict(
                 'Review hanya dapat diberikan pada Pull Request berstatus Open.',
                 'PULL_REQUEST_NOT_OPEN',
-                ['review_status' => $this->reviewStatusLabel($pullRequest)],
+                ['review_status' => $this->reviewStatusLabel($record)],
             );
         }
 
-        // Transaction 1: reserve the decision under a row lock. The lock and
-        // the re-check keep two concurrent reviewers from both believing the
-        // PR is still undecided.
+        // Transaction 1: reserve the decision under a row lock.
         $review = DB::transaction(function () use ($pullRequestId, $reviewer, $decisionValue, $comment): CodeReview {
-            $pullRequest = PullRequest::query()
+            $locked = PullRequest::query()
                 ->whereKey($pullRequestId)
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            if (! $this->isOpen($pullRequest)) {
+            if (! $this->isOpen($locked)) {
                 throw ApiException::conflict(
                     'Review hanya dapat diberikan pada Pull Request berstatus Open.',
                     'PULL_REQUEST_NOT_OPEN',
-                    ['review_status' => $this->reviewStatusLabel($pullRequest)],
+                    ['review_status' => $this->reviewStatusLabel($locked)],
                 );
             }
 
@@ -175,7 +313,7 @@ class PullRequestReviewService
 
         // GitHub call happens outside any transaction (UC05 pattern).
         $sync = $this->github->createPullRequestReview(
-            (int) $pullRequest->github_pr_number,
+            (int) $record->github_pr_number,
             $githubEvent,
             $comment,
         );
@@ -184,10 +322,10 @@ class PullRequestReviewService
         // confirmed the decision, apply the status transitions.
         [$review, $applied] = $this->recordSyncResult($review, $sync, $decisionValue);
 
-        $pullRequest = PullRequest::query()
+        $freshPullRequest = PullRequest::query()
             ->with(['developer', 'repository'])
             ->find($pullRequestId);
-        $backlog = MaintenanceBacklog::query()->find($pullRequest->backlog_id);
+        $backlog = MaintenanceBacklog::query()->find($freshPullRequest->backlog_id);
 
         $message = $applied
             ? ($decisionValue === CodeReview::DECISION_APPROVE
@@ -195,11 +333,13 @@ class PullRequestReviewService
                 : 'Perubahan memerlukan perbaikan.')
             : 'Review tersimpan tetapi belum tersinkron ke GitHub. Silakan coba kirim ulang.';
 
+        $mappedReview = $this->mapReview($review->refresh()->load('reviewer'));
+
         return [
             'message' => $message,
             'data' => [
-                'review' => $this->mapReview($review->refresh()->load('reviewer')),
-                'pull_request' => $this->pullRequests->map($pullRequest),
+                'review' => $mappedReview,
+                'pull_request' => $this->pullRequests->map($freshPullRequest),
                 'backlog' => [
                     'backlog_id' => (int) $backlog->backlog_id,
                     'status' => $backlog->status,
@@ -213,6 +353,11 @@ class PullRequestReviewService
                         'code' => $review->last_sync_error_code,
                         'retry_after_seconds' => $sync->retryAfterSeconds,
                     ],
+                'review' => $mappedReview,
+                'created' => true,
+                'reconciled' => false,
+                'idempotent_replay' => false,
+                'sync_pending' => ! $applied,
             ],
         ];
     }
@@ -455,6 +600,227 @@ class PullRequestReviewService
     }
 
     /**
+     * @param  array<string, mixed>  $pullRequest
+     * @param  array<int, array<string, mixed>>  $reviews
+     */
+    private function applySnapshot(PullRequest $record, array $pullRequest, array $reviews): PullRequest
+    {
+        return DB::transaction(function () use ($record, $pullRequest, $reviews): PullRequest {
+            $locked = PullRequest::query()
+                ->whereKey($record->pull_request_id)
+                ->lockForUpdate()
+                ->first();
+
+            if ($locked === null) {
+                throw ApiException::notFound(
+                    'Pull Request tidak ditemukan.',
+                    'PULL_REQUEST_NOT_FOUND',
+                );
+            }
+
+            $merged = (bool) ($pullRequest['merged'] ?? false)
+                || $pullRequest['merged_at'] !== null;
+            $lifecycle = $merged
+                ? 'merged'
+                : (($pullRequest['state'] ?? null) === 'closed' ? 'closed' : 'open');
+
+            $locked->forceFill([
+                'github_pr_id' => (int) $pullRequest['github_pr_id'],
+                'github_pr_number' => (int) $pullRequest['github_pr_number'],
+                'github_pr_url' => (string) $pullRequest['github_pr_url'],
+                'github_head_sha' => strtolower((string) $pullRequest['head_sha']),
+                'github_base_sha' => strtolower((string) $pullRequest['base_sha']),
+                'title' => $pullRequest['title'] ?? $locked->title,
+                'description' => $pullRequest['body'] ?? $locked->description,
+                'source_branch' => $pullRequest['source_branch'] ?? $locked->source_branch,
+                'target_branch' => $pullRequest['target_branch'] ?? $locked->target_branch,
+                'lifecycle_state' => $lifecycle,
+            ])->save();
+
+            $this->upsertReviews($locked, $reviews);
+
+            $reviewState = $this->computeReviewState($locked);
+            $locked->forceFill(['review_state' => $reviewState])->save();
+
+            $this->syncIssueStatus($locked, $lifecycle, $reviewState);
+
+            return $locked->fresh(['developer', 'repository', 'backlog', 'reviews.reviewer']);
+        });
+    }
+
+    private function computeReviewState(PullRequest $record): string
+    {
+        $reviews = CodeReview::query()
+            ->where('pull_request_id', $record->pull_request_id)
+            ->get();
+
+        $states = $reviews->pluck('decision')->all();
+
+        if (in_array(CodeReview::DECISION_REQUEST_CHANGES, $states, true)) {
+            return 'changes_requested';
+        }
+
+        if (in_array(CodeReview::DECISION_APPROVE, $states, true)) {
+            return 'approved';
+        }
+
+        return 'pending';
+    }
+
+    private function syncIssueStatus(PullRequest $record, string $lifecycle, string $reviewState): void
+    {
+        $issue = MaintenanceBacklog::query()->find($record->backlog_id);
+
+        if ($issue === null) {
+            return;
+        }
+
+        if ($lifecycle === 'merged') {
+            DB::table('maintenance_backlog')
+                ->where('backlog_id', $issue->backlog_id)
+                ->update([
+                    'status' => MaintenanceBacklog::STATUS_DONE,
+                    'updated_at' => now(),
+                ]);
+
+            return;
+        }
+
+        // Closed without merge is intentionally NOT treated as done.
+        if ($lifecycle !== 'open' || $issue->status === MaintenanceBacklog::STATUS_DONE) {
+            return;
+        }
+
+        $target = match ($reviewState) {
+            'approved' => MaintenanceBacklog::STATUS_READY_MERGE,
+            'changes_requested' => MaintenanceBacklog::STATUS_IN_PROGRESS,
+            default => MaintenanceBacklog::STATUS_READY_PULL_REQUEST,
+        };
+
+        if ($issue->status !== $target) {
+            DB::table('maintenance_backlog')
+                ->where('backlog_id', $issue->backlog_id)
+                ->update([
+                    'status' => $target,
+                    'updated_at' => now(),
+                ]);
+        }
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $reviews
+     */
+    private function upsertReviews(PullRequest $record, array $reviews): void
+    {
+        foreach ($reviews as $review) {
+            $existing = CodeReview::query()
+                ->where('github_review_id', (int) $review['github_review_id'])
+                ->first();
+
+            $login = (string) ($review['reviewer_login'] ?? data_get($review, 'user.login', ''));
+            $reviewerId = $existing?->reviewer_id
+                ?? $this->resolveReviewerId($login);
+
+            if ($reviewerId === null) {
+                continue;
+            }
+
+            $state = $review['state'] ?? 'COMMENTED';
+
+            if ($state === 'DISMISSED') {
+                CodeReview::query()
+                    ->where('pull_request_id', $record->pull_request_id)
+                    ->where('reviewer_id', $reviewerId)
+                    ->delete();
+
+                continue;
+            }
+
+            $decision = match ($state) {
+                'APPROVED' => CodeReview::DECISION_APPROVE,
+                'CHANGES_REQUESTED' => CodeReview::DECISION_REQUEST_CHANGES,
+                default => null,
+            };
+
+            if ($decision === null) {
+                continue;
+            }
+
+            $attributes = [
+                'pull_request_id' => $record->pull_request_id,
+                'reviewer_id' => $reviewerId,
+                'decision' => $decision,
+                'comment' => $review['body'] ?? null,
+                'reviewed_at' => $this->parseDate($review['submitted_at'] ?? null) ?? now(),
+                'sync_status' => 'synced',
+                'synced_at' => now(),
+            ];
+
+            if ($existing === null) {
+                CodeReview::query()->create(array_merge($attributes, [
+                    'github_review_id' => (int) $review['github_review_id'],
+                ]));
+            } else {
+                $existing->forceFill($attributes)->save();
+            }
+        }
+    }
+
+    private function assertSyncedPullRequest(PullRequest $record): void
+    {
+        if ($record->submission_state !== 'created'
+            || $record->github_pr_number === null
+            || (int) $record->github_pr_number < 1) {
+            throw ApiException::conflict(
+                'Pull Request belum tersinkron dengan GitHub.',
+                'PULL_REQUEST_NOT_SYNCED',
+            );
+        }
+    }
+
+    private function assertCanView(PullRequest $record, Pengguna $user): void
+    {
+        if ($user->role === 'Tim Maintenance') {
+            return;
+        }
+
+        if ($user->role === 'Developer') {
+            return;
+        }
+
+        throw ApiException::forbidden(
+            'Pull Request ini tidak dapat diakses oleh pengguna.',
+            'PULL_REQUEST_ACCESS_DENIED',
+        );
+    }
+
+    private function resolveReviewerId(string $login): ?int
+    {
+        if ($login === '') {
+            return null;
+        }
+
+        $reviewer = Pengguna::query()
+            ->whereRaw('LOWER(github_login) = ?', [strtolower($login)])
+            ->first();
+
+        return $reviewer?->user_id;
+    }
+
+    private function parseDate(?string $value): ?Carbon
+    {
+        if ($value === null || trim($value) === '') {
+            return null;
+        }
+
+        try {
+            return Carbon::parse($value);
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    /**
      * A PR is Open only when the metadata was created on GitHub, GitHub
      * reports it open, and no decision has been synced yet (D-W14-01-d).
      */
@@ -465,9 +831,6 @@ class PullRequestReviewService
             && ($pullRequest->review_state ?? 'pending') === 'pending';
     }
 
-    /**
-     * @return array<string, mixed>
-     */
     private function statusCondition(string $status): array
     {
         return match ($status) {
@@ -500,6 +863,50 @@ class PullRequestReviewService
     /**
      * @return array<string, mixed>
      */
+    private function presentSummary(PullRequest $record): array
+    {
+        $data = $this->pullRequests->present($record);
+
+        return array_merge($data, [
+            'review_state' => $record->review_state ?? 'pending',
+            'reviews_count' => (int) ($record->reviews_count ?? 0),
+            'author' => $this->presentAuthor($record),
+            'issue' => $this->presentIssue($record),
+        ]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function presentAuthor(PullRequest $record): array
+    {
+        return [
+            'user_id' => (int) $record->developer_id,
+            'nama' => $record->developer?->nama,
+            'github_login' => $record->developer?->github_login,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function presentIssue(PullRequest $record): ?array
+    {
+        $issue = $record->backlog;
+
+        if ($issue === null) {
+            return null;
+        }
+
+        return [
+            'issue_id' => (int) $issue->backlog_id,
+            'backlog_id' => (int) $issue->backlog_id,
+            'title' => $issue->case?->judul_issue,
+            'status' => $issue->status,
+            'source_branch' => $issue->source_branch,
+        ];
+    }
+
     private function listItem(PullRequest $pullRequest): array
     {
         $data = $this->pullRequests->map($pullRequest);

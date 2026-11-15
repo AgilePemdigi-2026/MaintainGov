@@ -622,11 +622,20 @@ class PullRequestService
     }
 
     /**
+    /**
      * Shared UC05/UC06 API representation. The `status` field keeps the UC05
      * contract (lifecycle_state ?? submission_state); UC06 review fields are
      * additive: review_state, review_status (SRS label), ready_for_merge and
      * status_label reflecting "Ready for Merge" (D-W14-01-b, contracts/uc06-api.md §3).
      *
+     * @return array<string, mixed>
+     */
+    public function present(PullRequest $pullRequest): array
+    {
+        return $this->map($pullRequest);
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function map(PullRequest $pullRequest): array
@@ -654,6 +663,7 @@ class PullRequestService
                 'nama' => $pullRequest->developer->nama,
                 'github_login' => $pullRequest->developer->github_login,
             ],
+            'author_login' => $pullRequest->author_login,
             'repository' => [
                 'full_name' => $pullRequest->repository_full_name,
                 'owner' => $pullRequest->repository?->owner,
@@ -677,6 +687,12 @@ class PullRequestService
             'status_label' => $readyForMerge ? 'Ready for Merge' : Str::ucfirst((string) $status),
             'submission_state' => $pullRequest->submission_state,
             'lifecycle_state' => $pullRequest->lifecycle_state,
+            'is_draft' => (bool) $pullRequest->is_draft,
+            'merged_at' => $pullRequest->merged_at?->toIso8601String(),
+            'closed_at' => $pullRequest->closed_at?->toIso8601String(),
+            'github_created_at' => $pullRequest->github_created_at?->toIso8601String(),
+            'github_updated_at' => $pullRequest->github_updated_at?->toIso8601String(),
+            'last_synced_at' => $pullRequest->last_synced_at?->toIso8601String(),
             'head_sha' => $pullRequest->github_head_sha,
             'base_sha' => $pullRequest->github_base_sha,
             'last_error_code' => $pullRequest->last_error_code,

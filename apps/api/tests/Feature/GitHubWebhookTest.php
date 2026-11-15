@@ -92,7 +92,7 @@ class GitHubWebhookTest extends Uc04Uc05TestCase
         $response = $this->postWebhook([
             'action' => 'opened',
             'repository' => ['full_name' => self::OWNER.'/'.self::REPO],
-        ], ['event' => 'pull_request', 'delivery' => 'pr-event-1']);
+        ], ['event' => 'issues', 'delivery' => 'pr-event-1']);
 
         $response->assertStatus(202)
             ->assertJsonPath('data.status', 'ignored')
@@ -345,5 +345,153 @@ class GitHubWebhookTest extends Uc04Uc05TestCase
             1,
             DB::table('github_webhook_delivery')->where('github_delivery_id', 'retry-1')->count(),
         );
+    }
+
+    public function test_signed_pull_request_merged_event_marks_issue_done(): void
+    {
+        $developer = $this->developer(['github_login' => 'dev-gh']);
+        $fixture = $this->createPullRequestRecord($developer);
+
+        $this->fakePullRequestSnapshot($fixture['record'], [
+            'state' => 'closed',
+            'merged' => true,
+            'merged_at' => '2026-11-04T11:00:00Z',
+            'closed_at' => '2026-11-04T11:00:00Z',
+        ]);
+
+        $this->postWebhook($this->pullRequestEventPayload('closed', $fixture['number']), [
+            'event' => 'pull_request',
+            'delivery' => 'pr-merged-1',
+        ])
+            ->assertOk()
+            ->assertJsonPath('data.status', 'processed')
+            ->assertJsonPath('data.lifecycle_state', 'merged')
+            ->assertJsonPath('data.issue_status', MaintenanceBacklog::STATUS_DONE);
+
+        $this->assertDatabaseHas('maintenance_backlog', [
+            'backlog_id' => $fixture['issue']['backlog_id'],
+            'status' => MaintenanceBacklog::STATUS_DONE,
+        ]);
+        $this->assertDatabaseHas('github_webhook_delivery', [
+            'github_delivery_id' => 'pr-merged-1',
+            'status' => 'processed',
+            'backlog_id' => $fixture['issue']['backlog_id'],
+        ]);
+    }
+
+    public function test_closed_pull_request_without_merge_is_not_marked_done(): void
+    {
+        $developer = $this->developer(['github_login' => 'dev-gh']);
+        $fixture = $this->createPullRequestRecord($developer);
+
+        $this->fakePullRequestSnapshot($fixture['record'], [
+            'state' => 'closed',
+            'merged' => false,
+            'closed_at' => '2026-11-04T11:00:00Z',
+        ]);
+
+        $this->postWebhook($this->pullRequestEventPayload('closed', $fixture['number']), [
+            'event' => 'pull_request',
+            'delivery' => 'pr-closed-1',
+        ])
+            ->assertOk()
+            ->assertJsonPath('data.lifecycle_state', 'closed')
+            ->assertJsonPath('data.issue_status', MaintenanceBacklog::STATUS_READY_PULL_REQUEST);
+
+        $this->assertDatabaseHas('maintenance_backlog', [
+            'backlog_id' => $fixture['issue']['backlog_id'],
+            'status' => MaintenanceBacklog::STATUS_READY_PULL_REQUEST,
+        ]);
+    }
+
+    public function test_pull_request_review_submitted_webhook_syncs_approval(): void
+    {
+        $developer = $this->developer(['github_login' => 'dev-gh']);
+        $reviewer = $this->maintenance(['github_login' => 'reviewer-gh']);
+        $fixture = $this->createPullRequestRecord($developer);
+
+        $this->fakePullRequestSnapshot($fixture['record'], [], [
+            $this->reviewPayload('reviewer-gh', 'APPROVED', null),
+        ]);
+
+        $this->postWebhook($this->pullRequestEventPayload('submitted', $fixture['number']), [
+            'event' => 'pull_request_review',
+            'delivery' => 'pr-review-1',
+        ])
+            ->assertOk()
+            ->assertJsonPath('data.status', 'processed')
+            ->assertJsonPath('data.review_state', 'approved')
+            ->assertJsonPath('data.issue_status', MaintenanceBacklog::STATUS_READY_MERGE);
+
+        $this->assertDatabaseHas('code_review', [
+            'pull_request_id' => $fixture['record']->pull_request_id,
+            'reviewer_id' => $reviewer->user_id,
+            'decision' => 'Approved',
+        ]);
+        $this->assertDatabaseHas('maintenance_backlog', [
+            'backlog_id' => $fixture['issue']['backlog_id'],
+            'status' => MaintenanceBacklog::STATUS_READY_MERGE,
+        ]);
+    }
+
+    public function test_pull_request_review_dismissed_webhook_recomputes_pending(): void
+    {
+        $developer = $this->developer(['github_login' => 'dev-gh']);
+        $fixture = $this->createPullRequestRecord($developer);
+
+        $this->fakePullRequestSnapshot($fixture['record'], [], [
+            $this->reviewPayload('reviewer-gh', 'DISMISSED', 'Dibatalkan.'),
+        ]);
+
+        $this->postWebhook($this->pullRequestEventPayload('dismissed', $fixture['number']), [
+            'event' => 'pull_request_review',
+            'delivery' => 'pr-review-dismissed-1',
+        ])
+            ->assertOk()
+            ->assertJsonPath('data.review_state', 'pending')
+            ->assertJsonPath('data.issue_status', MaintenanceBacklog::STATUS_READY_PULL_REQUEST);
+    }
+
+    public function test_pull_request_event_for_unlinked_pr_is_ignored_without_github_calls(): void
+    {
+        $this->postWebhook($this->pullRequestEventPayload('opened', 999), [
+            'event' => 'pull_request',
+            'delivery' => 'pr-unlinked-1',
+        ])
+            ->assertStatus(202)
+            ->assertJsonPath('data.status', 'ignored')
+            ->assertJsonPath('data.reason', 'no_matching_pull_request');
+
+        Http::assertNothingSent();
+        $this->assertDatabaseHas('github_webhook_delivery', [
+            'github_delivery_id' => 'pr-unlinked-1',
+            'status' => 'ignored',
+            'error_code' => 'no_matching_pull_request',
+        ]);
+    }
+
+    public function test_unsupported_pull_request_action_is_ignored(): void
+    {
+        $this->postWebhook($this->pullRequestEventPayload('labeled', 42), [
+            'event' => 'pull_request',
+            'delivery' => 'pr-labeled-1',
+        ])
+            ->assertStatus(202)
+            ->assertJsonPath('data.reason', 'unsupported_action');
+
+        Http::assertNothingSent();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function pullRequestEventPayload(string $action, int $number): array
+    {
+        return [
+            'action' => $action,
+            'number' => $number,
+            'pull_request' => ['number' => $number],
+            'repository' => ['full_name' => self::OWNER.'/'.self::REPO],
+        ];
     }
 }

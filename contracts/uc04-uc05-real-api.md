@@ -12,7 +12,8 @@ Acuan: SRS §4.6 UC04 (FR-UC04-01..11, BR-13..15), §4.7 UC05 (FR-UC05-01..14, B
 | Area | Endpoint nyata | Memanggil GitHub | Menulis database |
 | --- | --- | --- | --- |
 | Daftar/detail issue UC04 | `GET /api/v1/developer/maintenance-issues[/{issue}]` | tidak | tidak |
-| Klaim issue | `POST /api/v1/maintenance-backlogs/{issue}/claim` | tidak | ya |
+| Klaim issue | `POST /api/v1/maintenance-backlogs/{issue}/claim` | ya, buat branch bila belum ada | ya |
+| Penyiapan/retry branch | `POST /api/v1/maintenance-backlogs/{issue}/branch` | ya, buat branch bila belum ada | tidak |
 | Status push | `GET /api/v1/maintenance-backlogs/{issue}/push-status` | tidak | tidak |
 | Verifikasi push manual | `POST /api/v1/maintenance-backlogs/{issue}/push-verifications` | ya, baca branch + commit | ya |
 | Webhook push GitHub | `POST /api/v1/webhooks/github` | ya, baca branch + commit | ya |
@@ -187,10 +188,10 @@ Aturan:
 3. Status harus `Ready for Development`.
 4. `source_branch` tidak boleh sama dengan `GITHUB_DEFAULT_BRANCH`.
 5. `source_branch` tidak boleh dipakai issue lain berstatus `Sedang Dikerjakan` atau `Ready for Pull Request`.
-6. Repository trusted disimpan/ditautkan ke backlog. Klaim **tidak** memanggil GitHub.
+6. Repository trusted disimpan/ditautkan ke backlog. Setelah transaksi commit, backend memastikan branch kerja ada di GitHub (best-effort; kegagalan tidak membatalkan klaim).
 7. Dalam satu transaksi, baris dikunci (`lockForUpdate`) dan di-update bersyarat. Hanya satu pemanggil boleh menang.
 
-Respons `200` berisi objek issue lengkap dengan `message` tambahan:
+Respons `200` berisi objek issue lengkap dengan `message` dan `branch_preparation` tambahan:
 
 ```json
 {
@@ -206,10 +207,19 @@ Respons `200` berisi objek issue lengkap dengan `message` tambahan:
     },
     "assigned_at": "2026-11-04T10:00:00+00:00",
     "source_branch": "fix/notification-timeout",
-    "message": "Issue berhasil diambil."
+    "message": "Issue berhasil diambil.",
+    "branch_preparation": {
+      "status": "created",
+      "branch": "fix/notification-timeout",
+      "commit_sha": "cccccccccccccccccccccccccccccccccccccccc",
+      "message": "Branch berhasil dibuat di GitHub.",
+      "error_code": null
+    }
   }
 }
 ```
+
+`branch_preparation.status` bernilai `created`, `exists`, atau `failed`. Klaim tetap `200` ketika GitHub gagal; `error_code` berisi kode GitHub yang aman (mis. `GITHUB_UNAVAILABLE`, `GITHUB_FORBIDDEN`) dan Developer dapat mengulang lewat `POST /maintenance-backlogs/{issue}/branch`.
 
 Error:
 
@@ -223,7 +233,36 @@ Error:
 | 422 | `VALIDATION_ERROR` | Format branch tidak valid. |
 | 503 | `GITHUB_NOT_CONFIGURED` | Owner/repository server belum diisi; tidak ada assignment. |
 
-### 3.4 `GET /maintenance-backlogs/{issue}/push-status`
+### 3.4 `POST /maintenance-backlogs/{issue}/branch`
+
+Memastikan branch kerja ada di GitHub tanpa mengubah assignment atau status issue. Dipakai sebagai jalur retry ketika penyiapan branch saat klaim gagal. Hanya assignee dan hanya saat issue `Sedang Dikerjakan` atau `Ready for Pull Request`.
+
+Aturan:
+
+- Branch diambil dari `source_branch` issue; tidak ada input branch dari browser.
+- Bila branch sudah ada → `status: "exists"`; bila belum → buat ref dari HEAD default branch → `status: "created"`.
+- Idempotent: balapan `Reference already exists` dibaca ulang sebagai `exists`.
+- Kegagalan GitHub dikembalikan sebagai `status: "failed"` beserta `error_code`; assignment tidak berubah sehingga Developer dapat mencoba lagi.
+
+Respons `200`:
+
+```json
+{
+  "success": true,
+  "message": "Branch berhasil dibuat di GitHub.",
+  "data": {
+    "status": "created",
+    "branch": "fix/notification-timeout",
+    "commit_sha": "cccccccccccccccccccccccccccccccccccccccc",
+    "message": "Branch berhasil dibuat di GitHub.",
+    "error_code": null
+  }
+}
+```
+
+Error: 401, 403 `ISSUE_NOT_ASSIGNED_TO_DEVELOPER`, 404 `ISSUE_NOT_FOUND`, 409 `ISSUE_BRANCH_NOT_SET`/`ISSUE_NOT_PREPARABLE`.
+
+### 3.5 `GET /maintenance-backlogs/{issue}/push-status`
 
 Status push read-only.
 
@@ -250,7 +289,7 @@ Status push read-only.
 
 Error: 401, 403, 404 `ISSUE_NOT_FOUND`.
 
-### 3.5 `POST /maintenance-backlogs/{issue}/push-verifications`
+### 3.6 `POST /maintenance-backlogs/{issue}/push-verifications`
 
 Verifikasi push manual oleh assignee. Backend membaca branch head dan commit langsung dari GitHub; SHA dari browser bukan bukti.
 

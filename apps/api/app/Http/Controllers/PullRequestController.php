@@ -8,6 +8,7 @@ use App\Http\Requests\ListPullRequestRequest;
 use App\Http\Requests\StorePullRequestRequest;
 use App\Http\Requests\StorePullRequestReviewRequest;
 use App\Models\MaintenanceBacklog;
+use App\Models\PullRequest;
 use App\Services\GitHub\GitHubErrorMapper;
 use App\Services\GitHub\GitHubService;
 use App\Services\Maintenance\MaintenanceIssueService;
@@ -84,12 +85,12 @@ class PullRequestController extends Controller
         ], $result['created'] ? 201 : 200);
     }
 
-    public function show(int $pullRequest, PullRequestReviewService $reviews): JsonResponse
+    public function show(Request $request, int $pullRequest, PullRequestReviewService $reviews): JsonResponse
     {
         return response()->json([
             'success' => true,
             'message' => 'Detail Pull Request.',
-            'data' => $reviews->detail($pullRequest),
+            'data' => $reviews->detail($pullRequest, $request->user()),
         ]);
     }
 
@@ -109,6 +110,47 @@ class PullRequestController extends Controller
             $request->validated('comment') !== null
                 ? (string) $request->validated('comment')
                 : null,
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => $result['message'],
+            'data' => $result['data'],
+            'meta' => $result['meta'],
+        ]);
+    }
+
+    /**
+     * Fetch the latest PR + review snapshot from GitHub and persist it.
+     */
+    public function sync(
+        Request $request,
+        int $pullRequest,
+        PullRequestReviewService $reviews,
+    ): JsonResponse {
+        $record = $this->findPullRequest($pullRequest);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Pull Request berhasil disinkronkan dengan GitHub.',
+            'data' => $reviews->detail($record, $request->user(), refresh: true),
+        ]);
+    }
+
+    /**
+     * UC06 Approve / Request Changes (alternative alias).
+     */
+    public function review(
+        Request $request,
+        int $pullRequest,
+        PullRequestReviewService $reviews,
+    ): JsonResponse {
+        $result = $reviews->submitReview(
+            $pullRequest,
+            $request->user(),
+            (string) ($request->input('decision') ?? ''),
+            $request->input('notes') ?? $request->input('comment'),
+            $request->input('idempotency_key'),
         );
 
         return response()->json([
@@ -185,5 +227,19 @@ class PullRequestController extends Controller
                 : 'Tidak ada metadata Pull Request yang dapat direkonsiliasi.',
             'data' => $result,
         ]);
+    }
+
+    private function findPullRequest(int $pullRequest): PullRequest
+    {
+        $record = PullRequest::query()->find($pullRequest);
+
+        if ($record === null) {
+            throw ApiException::notFound(
+                'Pull Request tidak ditemukan.',
+                'PULL_REQUEST_NOT_FOUND',
+            );
+        }
+
+        return $record;
     }
 }

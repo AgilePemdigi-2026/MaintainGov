@@ -81,6 +81,31 @@ test("claim success updates status and assignee, POST sent once on double click"
   expect(mock.calls.filter(call => call.method === "POST" && call.path === "/maintenance-backlogs/7/claim")).toHaveLength(1);
 });
 
+test("claim reports failed branch preparation without a manual retry button", async ({ page }) => {
+  const branch = "maintenance/issue-7";
+  let current = issue();
+  const mock = await mockApi(page, USERS.developer, ({ method, path }) => {
+    if (method === "GET" && path === "/developer/maintenance-issues/7") return { body: { data: current } };
+    if (method === "POST" && path === "/maintenance-backlogs/7/claim") {
+      current = issue({
+        status: "Sedang Dikerjakan", assigned_to: dev, assigned_at: "2026-10-27T08:00:00Z", source_branch: branch,
+        branch_preparation: {
+          status: "failed", branch, commit_sha: null,
+          message: "GitHub sedang tidak dapat dihubungi.", error_code: "GITHUB_UNAVAILABLE",
+        },
+      });
+      return { body: { data: current } };
+    }
+  });
+  await page.goto("/maintenance-issue/7");
+  await page.getByRole("button", { name: "Kerjakan issue" }).click();
+  await expect(page.getByText("GitHub sedang tidak dapat dihubungi.")).toBeVisible();
+  await expect(page.getByText("Klaim issue tetap tersimpan", { exact: false })).toBeVisible();
+  await expect(page.getByText("Buat branch tersebut secara manual", { exact: false })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Siapkan branch GitHub" })).toHaveCount(0);
+  expect(mock.calls.filter(call => call.method === "POST" && call.path === "/maintenance-backlogs/7/branch")).toHaveLength(0);
+});
+
 test("claim 409 shows taken message and locks the button", async ({ page }) => {
   let taken = false;
   await mockApi(page, USERS.developer, ({ method, path }) => {

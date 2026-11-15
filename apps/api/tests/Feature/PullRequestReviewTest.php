@@ -100,7 +100,7 @@ class PullRequestReviewTest extends Uc04Uc05TestCase
             ->assertJsonPath('message', 'Akses ditolak. Role tidak memiliki izin.');
         $this->actingAs($maintenance)
             ->getJson('/api/v1/pull-requests/'.$pr['pull_request_id'])
-            ->assertForbidden();
+            ->assertOk();
         $this->actingAs($maintenance)
             ->postJson('/api/v1/pull-requests/'.$pr['pull_request_id'].'/reviews', [
                 'decision' => 'approve',
@@ -677,5 +677,27 @@ class PullRequestReviewTest extends Uc04Uc05TestCase
             1,
             CodeReview::query()->where('pull_request_id', $pr['pull_request_id'])->count(),
         );
+    }
+
+    public function test_sync_endpoint_updates_pull_request_snapshot(): void
+    {
+        $author = $this->developer(['github_login' => 'dev-gh']);
+        $reviewer = $this->developer(['github_login' => 'reviewer-gh']);
+        $issue = $this->readyForPullRequestIssue($author);
+        $pr = $this->openPullRequest($author, $issue['backlog_id']);
+
+        Http::fake([
+            '*/pulls/'.self::PR_NUMBER => Http::response($this->pullRequestPayload()),
+            '*/pulls/'.self::PR_NUMBER.'/reviews*' => Http::response([
+                $this->githubReviewPayload('APPROVED'),
+            ]),
+        ]);
+
+        $response = $this->actingAs($reviewer)
+            ->postJson('/api/v1/pull-requests/'.$pr['pull_request_id'].'/sync');
+
+        $response->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.pull_request_id', $pr['pull_request_id']);
     }
 }

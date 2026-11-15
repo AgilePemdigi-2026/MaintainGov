@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOneThrough;
 
 /**
  * UC06 Code Review. One active review per (pull_request, reviewer): a new
@@ -13,6 +14,16 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class CodeReview extends Model
 {
+    public const STATE_APPROVED = 'APPROVED';
+
+    public const STATE_CHANGES_REQUESTED = 'CHANGES_REQUESTED';
+
+    public const STATE_COMMENTED = 'COMMENTED';
+
+    public const STATE_DISMISSED = 'DISMISSED';
+
+    public const STATE_PENDING = 'PENDING';
+
     public const DECISION_APPROVE = 'Approved';
 
     public const DECISION_REQUEST_CHANGES = 'Changes Requested';
@@ -47,5 +58,17 @@ class CodeReview extends Model
     public function reviewer(): BelongsTo
     {
         return $this->belongsTo(Pengguna::class, 'reviewer_id', 'user_id');
+    }
+
+    public function backlog(): HasOneThrough
+    {
+        return $this->hasOneThrough(
+            MaintenanceBacklog::class,
+            PullRequest::class,
+            'pull_request_id',
+            'backlog_id',
+            'pull_request_id',
+            'backlog_id',
+        );
     }
 }

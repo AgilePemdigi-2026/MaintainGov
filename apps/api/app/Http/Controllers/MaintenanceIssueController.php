@@ -8,6 +8,7 @@ use App\Http\Requests\VerifyPushRequest;
 use App\Services\GitHub\PushVerificationService;
 use App\Services\Maintenance\MaintenanceIssueService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 /**
  * UC04 Developer endpoints. Actions are only available to Role Developer;
@@ -58,6 +59,20 @@ class MaintenanceIssueController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Issue berhasil diambil.',
+            'data' => $data,
+        ]);
+    }
+
+    public function prepareBranch(
+        Request $request,
+        int $issue,
+        MaintenanceIssueService $issues,
+    ): JsonResponse {
+        $data = $issues->prepareBranch($issue, $request->user());
+
+        return response()->json([
+            'success' => true,
+            'message' => $data['message'],
             'data' => $data,
         ]);
     }

@@ -14,32 +14,28 @@ class Uc04Uc05FlowTest extends Uc04Uc05TestCase
         $issue = $this->createIssue();
         $path = '/api/v1/maintenance-backlogs/'.$issue['backlog_id'];
 
-        $this->actingAs($developer)
-            ->postJson($path.'/claim', ['source_branch' => self::SOURCE_BRANCH])
-            ->assertOk()
-            ->assertJsonPath('data.issue_id', $issue['backlog_id'])
-            ->assertJsonPath('data.status', MaintenanceBacklog::STATUS_IN_PROGRESS)
-            ->assertJsonPath('data.assigned_to.user_id', $developer->user_id)
-            ->assertJsonPath('data.source_branch', self::SOURCE_BRANCH);
-
-        $this->assertDatabaseHas('maintenance_backlog', [
-            'backlog_id' => $issue['backlog_id'],
-            'assigned_to' => $developer->user_id,
-            'status' => MaintenanceBacklog::STATUS_IN_PROGRESS,
-            'source_branch' => self::SOURCE_BRANCH,
-        ]);
-
         $base = 'https://api.github.test/repos/'.self::OWNER.'/'.self::REPO;
+        $branchExists = false;
         $createdOnGitHub = false;
 
         Http::fake([
             $base => Http::response($this->repositoryPayload()),
-            $base.'/branches/'.rawurlencode(self::SOURCE_BRANCH) => Http::response(
-                $this->branchPayload(self::SOURCE_BRANCH, self::SOURCE_SHA),
-            ),
+            $base.'/branches/'.rawurlencode(self::SOURCE_BRANCH) => function () use (&$branchExists) {
+                return $branchExists
+                    ? Http::response($this->branchPayload(self::SOURCE_BRANCH, self::SOURCE_SHA))
+                    : Http::response(['message' => 'Not Found'], 404);
+            },
             $base.'/branches/'.self::DEFAULT_BRANCH => Http::response(
                 $this->branchPayload(self::DEFAULT_BRANCH, self::BASE_SHA),
             ),
+            $base.'/git/refs' => function () use (&$branchExists) {
+                $branchExists = true;
+
+                return Http::response([
+                    'ref' => 'refs/heads/'.self::SOURCE_BRANCH,
+                    'object' => ['sha' => self::BASE_SHA],
+                ], 201);
+            },
             $base.'/commits/'.self::SOURCE_SHA => Http::response($this->commitPayload(self::SOURCE_SHA)),
             $base.'/pulls*' => function (Request $request) use (&$createdOnGitHub) {
                 if ($request->method() === 'GET') {
@@ -54,6 +50,25 @@ class Uc04Uc05FlowTest extends Uc04Uc05TestCase
                 return Http::response($this->pullRequestPayload(), 201);
             },
         ]);
+
+        $this->actingAs($developer)
+            ->postJson($path.'/claim', ['source_branch' => self::SOURCE_BRANCH])
+            ->assertOk()
+            ->assertJsonPath('data.issue_id', $issue['backlog_id'])
+            ->assertJsonPath('data.status', MaintenanceBacklog::STATUS_IN_PROGRESS)
+            ->assertJsonPath('data.assigned_to.user_id', $developer->user_id)
+            ->assertJsonPath('data.source_branch', self::SOURCE_BRANCH)
+            ->assertJsonPath('data.branch_preparation.status', 'created')
+            ->assertJsonPath('data.branch_preparation.commit_sha', self::BASE_SHA);
+
+        $this->assertDatabaseHas('maintenance_backlog', [
+            'backlog_id' => $issue['backlog_id'],
+            'assigned_to' => $developer->user_id,
+            'status' => MaintenanceBacklog::STATUS_IN_PROGRESS,
+            'source_branch' => self::SOURCE_BRANCH,
+        ]);
+
+        $this->assertTrue($branchExists);
 
         $this->actingAs($developer)
             ->postJson($path.'/push-verifications', ['commit_sha' => self::SOURCE_SHA])

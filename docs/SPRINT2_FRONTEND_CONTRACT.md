@@ -14,7 +14,8 @@ Semua path berawalan `/api/v1`, memakai sesi Laravel (cookie + `X-CSRF-TOKEN` un
 | PATCH `/maintenance-backlog/{id}` | `BacklogUpdate` (`judul`, `modul`, `fitur`, `severity`, `priority_score`, `ringkasan_masalah`, `recommendation`) | `{ data }`; 409 bila sudah dikerjakan; 422 field wajib | Maintenance | UC03 |
 | GET `/developer/maintenance-issues?status=&assigned_to_me=&page=&per_page=` | query | `{ data: MaintenanceIssue[], meta }` | Developer | UC04 |
 | GET `/developer/maintenance-issues/{id}` | - | `{ data: MaintenanceIssue }` | Developer | UC04 |
-| POST `/maintenance-backlogs/{id}/claim` | - | `{ data }` status Sedang Dikerjakan; 409 `Issue telah diambil Developer lain` | Developer | UC04 |
+| POST `/maintenance-backlogs/{id}/claim` | - | `{ data }` status Sedang Dikerjakan + `branch_preparation` (`created`/`exists`/`failed`); 409 `Issue telah diambil Developer lain` | Developer | UC04 |
+| POST `/maintenance-backlogs/{id}/branch` | - | `{ data: BranchPreparation }`; idempotent retry pembuatan branch GitHub; 403 non-assignee, 409 status tidak aktif | Developer assignee | UC04 |
 | GET `/maintenance-backlogs/{id}/branches` | query `per_page` | `{ data: { issue_id, source_branch, suggested_target_branch, default_branch, branches[], repository } }`; 409 bila belum Ready for PR | Developer assignee | UC05 |
 | POST `/maintenance-backlogs/{id}/pull-requests` | `{ source_branch, target_branch, title, description }` | `{ data: PullRequestInfo }` status Open; 503 bila GitHub gagal | Developer assignee | UC05 |
 

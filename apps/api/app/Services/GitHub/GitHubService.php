@@ -26,6 +26,9 @@ class GitHubService
 
     private const USER_AGENT = 'MaintainGov/1.0';
 
+    /** @var array{login: string, id: int|null}|null */
+    private ?array $authenticatedUser = null;
+
     public function checkConnection(): GitHubConnectionResult
     {
         $config = $this->configuration();
@@ -122,6 +125,51 @@ class GitHubService
 
                 return $branches;
             },
+        );
+    }
+
+    public function createBranch(string $branch, string $sha): GitHubApiResult
+    {
+        if (! preg_match('/^[0-9a-fA-F]{40}$/', $sha)) {
+            return GitHubApiResult::failure(
+                'GITHUB_INVALID_COMMIT_SHA',
+                'Commit SHA tidak valid.',
+                422,
+            );
+        }
+
+        $config = $this->configuration();
+
+        if ($config === null) {
+            return $this->notConfigured();
+        }
+
+        $url = $config['api_url'].'/repos/'.rawurlencode($config['owner']).'/'.rawurlencode($config['repository'])
+            .'/git/refs';
+
+        return $this->callAndValidate(
+            fn () => $this->http($config)->post($url, [
+                'ref' => 'refs/heads/'.$branch,
+                'sha' => $sha,
+            ]),
+            function (array $payload) use ($branch, $sha): ?array {
+                $ref = $payload['ref'] ?? null;
+                $returnedSha = data_get($payload, 'object.sha');
+
+                if (! is_string($ref) || $ref !== 'refs/heads/'.$branch) {
+                    return null;
+                }
+
+                if (! is_string($returnedSha) || strcasecmp($returnedSha, $sha) !== 0) {
+                    return null;
+                }
+
+                return [
+                    'name' => $branch,
+                    'sha' => $returnedSha,
+                ];
+            },
+            [201],
         );
     }
 
@@ -279,12 +327,53 @@ class GitHubService
     }
 
     /**
-     * UC06 (FR-UC06-11): submit a review decision to GitHub. `event` is
-     * APPROVE or REQUEST_CHANGES; `body` is the review note (required by
-     * GitHub for REQUEST_CHANGES). Only 200/201 responses with a known
-     * review state are accepted as synchronization evidence.
+    /**
+     * GitHub identity that owns the configured server-side credential.
+     *
+     * A GitHub review is attributed to this identity, never to an arbitrary
+     * MaintainGov user. UC06 compares it with the reviewer mapping before a
+     * review is submitted so the local reviewer identity cannot diverge from
+     * the identity GitHub records.
      */
-    public function createPullRequestReview(int $number, string $event, ?string $body): GitHubApiResult
+    public function getAuthenticatedUser(): GitHubApiResult
+    {
+        if ($this->authenticatedUser !== null) {
+            return GitHubApiResult::success($this->authenticatedUser, 200);
+        }
+
+        $config = $this->configuration();
+
+        if ($config === null) {
+            return $this->notConfigured();
+        }
+
+        $result = $this->callAndValidate(
+            fn () => $this->http($config)->get($config['api_url'].'/user'),
+            function (array $payload): ?array {
+                $login = $payload['login'] ?? null;
+
+                if (! is_string($login) || trim($login) === '') {
+                    return null;
+                }
+
+                return [
+                    'login' => trim($login),
+                    'id' => is_int($payload['id'] ?? null) ? (int) $payload['id'] : null,
+                ];
+            },
+        );
+
+        if ($result->success && is_array($result->data)) {
+            $this->authenticatedUser = $result->data;
+        }
+
+        return $result;
+    }
+
+    /**
+     * @return GitHubApiResult data is an array<int, array<string, mixed>>
+     */
+    public function listPullRequestReviews(int $number): GitHubApiResult
     {
         if ($number < 1) {
             return GitHubApiResult::failure(
@@ -304,42 +393,90 @@ class GitHubService
             .'/pulls/'.$number.'/reviews';
 
         return $this->callAndValidate(
-            fn () => $this->http($config)->post($url, array_filter([
-                'event' => $event,
-                'body' => $body,
-            ], fn ($value): bool => $value !== null)),
+            fn () => $this->http($config)->get($url, ['per_page' => 100]),
+            function (array $payload): array|false {
+                $reviews = [];
+
+                foreach ($payload as $item) {
+                    if (! is_array($item)) {
+                        return false;
+                    }
+
+                    $review = $this->normalizePullRequestReview($item);
+
+                    if ($review === null) {
+                        return false;
+                    }
+
+                    $reviews[] = $review;
+                }
+
+                return $reviews;
+            },
+        );
+    }
+
+    /**
+     * UC06 (FR-UC06-11): submit a review decision to GitHub. `event` is
+     * APPROVE or REQUEST_CHANGES; `body` is the review note (required by
+     * GitHub for REQUEST_CHANGES). Only 200/201 responses with a known
+     * review state are accepted as synchronization evidence.
+     */
+    public function createPullRequestReview(int $number, string $event, ?string $body): GitHubApiResult
+    {
+        return $this->submitPullRequestReview($number, $event, $body);
+    }
+
+    /**
+     * Submit a real GitHub Pull Request review.
+     *
+     * This is a non-idempotent write. Callers must reconcile by reading reviews
+     * after a timeout instead of blindly retrying the POST.
+     *
+     * @return GitHubApiResult data is a normalized review
+     */
+    public function submitPullRequestReview(int $number, string $event, ?string $body = null): GitHubApiResult
+    {
+        if ($number < 1) {
+            return GitHubApiResult::failure(
+                'GITHUB_INVALID_PULL_REQUEST',
+                'Nomor Pull Request tidak valid.',
+                422,
+            );
+        }
+
+        if (! in_array($event, ['APPROVE', 'REQUEST_CHANGES'], true)) {
+            return GitHubApiResult::failure(
+                'GITHUB_INVALID_REVIEW_EVENT',
+                'Keputusan review tidak valid.',
+                422,
+            );
+        }
+
+        $config = $this->configuration();
+
+        if ($config === null) {
+            return $this->notConfigured();
+        }
+
+        $url = $config['api_url'].'/repos/'.rawurlencode($config['owner']).'/'.rawurlencode($config['repository'])
+            .'/pulls/'.$number.'/reviews';
+
+        $payload = ['event' => $event];
+
+        if ($body !== null && trim($body) !== '') {
+            $payload['body'] = $body;
+        }
+
+        return $this->callAndValidate(
+            fn () => $this->http($config)->post($url, $payload),
             fn (array $payload): ?array => $this->normalizePullRequestReview($payload),
             [200, 201],
         );
     }
 
     /**
-     * @return array<string, mixed>|null
-     */
-    private function normalizePullRequestReview(array $payload): ?array
-    {
-        $id = $payload['id'] ?? null;
-        $state = $payload['state'] ?? null;
-        $submittedAt = $payload['submitted_at'] ?? null;
-        $htmlUrl = $payload['html_url'] ?? null;
-
-        if (! is_int($id)
-            || ! is_string($state)
-            || ! in_array($state, ['APPROVED', 'CHANGES_REQUESTED', 'COMMENTED'], true)
-            || ! is_string($submittedAt) || $submittedAt === '') {
-            return null;
-        }
-
-        return [
-            'github_review_id' => $id,
-            'state' => $state,
-            'submitted_at' => $submittedAt,
-            'html_url' => is_string($htmlUrl) && $htmlUrl !== '' ? $htmlUrl : null,
-        ];
-    }
-
-    /**
-     * @return array{token: string, owner: string, repository: string, api_url: string, timeout: int, connect_timeout: int}|null
+     * @return array{token: string, owner: string, repository: string, api_url: string, api_version: string, timeout: int, connect_timeout: int}|null
      */
     private function configuration(): ?array
     {
@@ -347,8 +484,9 @@ class GitHubService
         $owner = trim((string) config('services.github.owner'));
         $repository = trim((string) config('services.github.repository'));
         $apiUrl = rtrim(trim((string) config('services.github.api_url', 'https://api.github.com')), '/');
+        $apiVersion = trim((string) config('services.github.api_version', self::API_VERSION));
 
-        if ($token === '' || $owner === '' || $repository === '' || $apiUrl === '') {
+        if ($token === '' || $owner === '' || $repository === '' || $apiUrl === '' || $apiVersion === '') {
             return null;
         }
 
@@ -357,20 +495,21 @@ class GitHubService
             'owner' => $owner,
             'repository' => $repository,
             'api_url' => $apiUrl,
+            'api_version' => $apiVersion,
             'timeout' => max(1, (int) config('services.github.timeout', 10)),
             'connect_timeout' => max(1, (int) config('services.github.connect_timeout', 5)),
         ];
     }
 
     /**
-     * @param  array{token: string, owner: string, repository: string, api_url: string, timeout: int, connect_timeout: int}  $config
+     * @param  array{token: string, owner: string, repository: string, api_url: string, api_version: string, timeout: int, connect_timeout: int}  $config
      */
     private function http(array $config): PendingRequest
     {
         return Http::withToken($config['token'])
             ->withHeaders([
                 'Accept' => self::ACCEPT_HEADER,
-                'X-GitHub-Api-Version' => self::API_VERSION,
+                'X-GitHub-Api-Version' => $config['api_version'],
                 'User-Agent' => self::USER_AGENT,
             ])
             ->connectTimeout($config['connect_timeout'])
@@ -445,6 +584,11 @@ class GitHubService
                 'GITHUB_RESOURCE_NOT_FOUND',
                 'GitHub resource was not found.',
                 404,
+            ),
+            $response->status() === 422 && $this->isReferenceExists($response) => GitHubApiResult::failure(
+                'GITHUB_REFERENCE_EXISTS',
+                'GitHub reference already exists.',
+                422,
             ),
             $response->status() === 422 => GitHubApiResult::failure(
                 'GITHUB_VALIDATION_FAILED',
@@ -540,9 +684,59 @@ class GitHubService
             'state' => $state,
             'head_sha' => $headSha,
             'base_sha' => $baseSha,
-            'title' => is_string($payload['title'] ?? null) ? $payload['title'] : null,
+            'title' => $this->stringOrNull($payload['title'] ?? null),
+            'body' => $this->stringOrNull($payload['body'] ?? null),
             'draft' => (bool) ($payload['draft'] ?? false),
+            'merged' => (bool) ($payload['merged'] ?? false),
+            'merged_at' => $this->stringOrNull($payload['merged_at'] ?? null),
+            'closed_at' => $this->stringOrNull($payload['closed_at'] ?? null),
+            'created_at' => $this->stringOrNull($payload['created_at'] ?? null),
+            'updated_at' => $this->stringOrNull($payload['updated_at'] ?? null),
+            'author_login' => $this->stringOrNull(data_get($payload, 'user.login')),
+            'source_branch' => $this->stringOrNull(data_get($payload, 'head.ref')),
+            'target_branch' => $this->stringOrNull(data_get($payload, 'base.ref')),
+            'head_repository_full_name' => $this->stringOrNull(data_get($payload, 'head.repo.full_name')),
+            'base_repository_full_name' => $this->stringOrNull(data_get($payload, 'base.repo.full_name')),
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>|null
+     */
+    private function normalizePullRequestReview(array $payload): ?array
+    {
+        $id = $payload['id'] ?? null;
+        $login = data_get($payload, 'user.login');
+        $state = $payload['state'] ?? null;
+
+        if (! is_int($id) || $id < 1
+            || ! is_string($login) || trim($login) === ''
+            || ! is_string($state)
+            || ! in_array($state, [
+                'APPROVED',
+                'CHANGES_REQUESTED',
+                'COMMENTED',
+                'DISMISSED',
+                'PENDING',
+            ], true)) {
+            return null;
+        }
+
+        return [
+            'github_review_id' => $id,
+            'reviewer_login' => trim($login),
+            'state' => $state,
+            'body' => $this->stringOrNull($payload['body'] ?? null),
+            'commit_id' => $this->stringOrNull($payload['commit_id'] ?? null),
+            'html_url' => $this->stringOrNull($payload['html_url'] ?? null),
+            'submitted_at' => $this->stringOrNull($payload['submitted_at'] ?? null),
+        ];
+    }
+
+    private function stringOrNull(mixed $value): ?string
+    {
+        return is_string($value) && trim($value) !== '' ? $value : null;
     }
 
     private function classifyResponse(Response $response, string $expectedFullName): GitHubConnectionResult
@@ -664,6 +858,14 @@ class GitHubService
         return str_contains($message, 'rate limit')
             || str_contains($message, 'secondary rate')
             || str_contains($documentationUrl, 'rate-limit');
+    }
+
+    private function isReferenceExists(Response $response): bool
+    {
+        $message = $response->json('message');
+
+        return is_string($message)
+            && str_contains(strtolower($message), 'reference already exists');
     }
 
     private function retryAfterSeconds(Response $response): ?int
