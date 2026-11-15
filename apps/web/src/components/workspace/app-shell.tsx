@@ -19,7 +19,14 @@ const NAV: { group: string; items: { href: string; label: string; roles: string[
   },
   {
     group: "Tim Developer",
-    items: [{ href: "/maintenance-issue", label: "Maintenance Issue", roles: ["Developer"] }],
+    items: [
+      { href: "/maintenance-issue", label: "Maintenance Issue", roles: ["Developer"] },
+      { href: "/pull-request", label: "Pull Request", roles: ["Developer"] },
+    ],
+  },
+  {
+    group: "Pemantauan",
+    items: [{ href: "/riwayat", label: "Status & Riwayat", roles: ["Tim Maintenance", "Developer"] }],
   },
 ];
 
