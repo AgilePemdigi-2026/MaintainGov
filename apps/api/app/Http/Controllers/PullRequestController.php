@@ -4,9 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Exceptions\ApiException;
 use App\Http\Requests\ListBranchesRequest;
-use App\Http\Requests\ListPullRequestsRequest;
+use App\Http\Requests\ListPullRequestRequest;
 use App\Http\Requests\StorePullRequestRequest;
-use App\Http\Requests\SubmitPullRequestReviewRequest;
+use App\Http\Requests\StorePullRequestReviewRequest;
 use App\Models\MaintenanceBacklog;
 use App\Models\PullRequest;
 use App\Services\GitHub\GitHubErrorMapper;
@@ -20,9 +20,35 @@ use Illuminate\Http\Request;
 /**
  * UC05 Pull Request endpoints. The real GitHub PR is created before a success
  * response is returned; metadata is persisted in `pull_request`.
+ *
+ * UC06 (W14-01) adds the review list/detail endpoints and the review decision
+ * endpoint; see contracts/uc06-api.md.
  */
 class PullRequestController extends Controller
 {
+    /**
+     * UC06 (FR-UC06-01): paginated PR list with an SRS status filter.
+     */
+    public function list(ListPullRequestRequest $request, PullRequestReviewService $reviews): JsonResponse
+    {
+        $status = $request->filled('status')
+            ? (string) $request->validated('status')
+            : null;
+
+        $result = $reviews->list(
+            $status,
+            (int) ($request->validated('per_page') ?? 25),
+            (int) ($request->validated('page') ?? 1),
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Daftar Pull Request.',
+            'data' => $result['data'],
+            'meta' => $result['meta'],
+        ]);
+    }
+
     public function index(int $issue, PullRequestService $pullRequests): JsonResponse
     {
         $data = $pullRequests->listForBacklog($issue);
@@ -59,35 +85,38 @@ class PullRequestController extends Controller
         ], $result['created'] ? 201 : 200);
     }
 
-    /**
-     * UC06 list of Pull Requests. Tim Maintenance sees all; a Developer sees
-     * only Pull Requests they authored.
-     */
-    public function indexAll(
-        ListPullRequestsRequest $request,
-        PullRequestReviewService $reviews,
-    ): JsonResponse {
-        $result = $reviews->list($request->user(), $request->validated());
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Daftar Pull Request.',
-            'data' => $result['data'],
-            'meta' => $result['meta'],
-        ]);
-    }
-
-    public function show(
-        Request $request,
-        int $pullRequest,
-        PullRequestReviewService $reviews,
-    ): JsonResponse {
-        $record = $this->findPullRequest($pullRequest);
-
+    public function show(Request $request, int $pullRequest, PullRequestReviewService $reviews): JsonResponse
+    {
         return response()->json([
             'success' => true,
             'message' => 'Detail Pull Request.',
-            'data' => $reviews->detail($record, $request->user(), refresh: false),
+            'data' => $reviews->detail($pullRequest, $request->user()),
+        ]);
+    }
+
+    /**
+     * UC06 (FR-UC06-07..11): store the review decision, sync it to GitHub,
+     * and apply the PR/backlog transitions only on successful sync.
+     */
+    public function storeReview(
+        StorePullRequestReviewRequest $request,
+        int $pullRequest,
+        PullRequestReviewService $reviews,
+    ): JsonResponse {
+        $result = $reviews->submitReview(
+            $pullRequest,
+            $request->user(),
+            (string) $request->validated('decision'),
+            $request->validated('comment') !== null
+                ? (string) $request->validated('comment')
+                : null,
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => $result['message'],
+            'data' => $result['data'],
+            'meta' => $result['meta'],
         ]);
     }
 
@@ -109,34 +138,27 @@ class PullRequestController extends Controller
     }
 
     /**
-     * UC06 Approve / Request Changes. A success response is returned only after
-     * GitHub accepted the review (or the review was reconciled from GitHub).
+     * UC06 Approve / Request Changes (alternative alias).
      */
     public function review(
-        SubmitPullRequestReviewRequest $request,
+        Request $request,
         int $pullRequest,
         PullRequestReviewService $reviews,
     ): JsonResponse {
-        $record = $this->findPullRequest($pullRequest);
         $result = $reviews->submitReview(
-            $record,
+            $pullRequest,
             $request->user(),
-            $request->validated(),
-            $request->validated('idempotency_key'),
+            (string) ($request->input('decision') ?? ''),
+            $request->input('notes') ?? $request->input('comment'),
+            $request->input('idempotency_key'),
         );
 
         return response()->json([
             'success' => true,
             'message' => $result['message'],
             'data' => $result['data'],
-            'meta' => [
-                'review' => $result['review'],
-                'created' => $result['created'],
-                'reconciled' => $result['reconciled'],
-                'idempotent_replay' => $result['idempotent_replay'],
-                'sync_pending' => $result['sync_pending'],
-            ],
-        ], $result['created'] ? 201 : 200);
+            'meta' => $result['meta'],
+        ]);
     }
 
     public function branches(

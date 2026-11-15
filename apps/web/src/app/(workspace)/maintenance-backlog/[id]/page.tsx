@@ -318,6 +318,9 @@ export default function MaintenanceBacklogDetailPage() {
               <InfoRow label="Case terkait">
                 <Link href={`/maintenance-case/${backlog.case_id}`}>{caseCode(backlog.case_id)}</Link>
               </InfoRow>
+              <InfoRow label="Riwayat">
+                <Link href={`/riwayat/${backlog.case_id}`}>Lihat status &amp; riwayat</Link>
+              </InfoRow>
               <InfoRow label="Severity"><SeverityBadge severity={backlog.severity} /></InfoRow>
             </dl>
           </section>

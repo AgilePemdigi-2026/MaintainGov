@@ -82,6 +82,10 @@ export interface PullRequestInfo {
   /** Status GitHub lifecycle; UC05 hanya membuat PR berstatus Open. */
   status: "Open" | "Closed" | "Merged";
   created_at: string;
+  /** UC06 (additive): label review SRS dan kesiapan merge; null bila backend lama. */
+  review_status?: string | null;
+  review_state?: string | null;
+  ready_for_merge?: boolean;
 }
 
 export interface MaintenanceBacklog {

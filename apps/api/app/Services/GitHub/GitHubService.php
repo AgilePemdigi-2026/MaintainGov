@@ -327,6 +327,7 @@ class GitHubService
     }
 
     /**
+    /**
      * GitHub identity that owns the configured server-side credential.
      *
      * A GitHub review is attributed to this identity, never to an arbitrary
@@ -413,6 +414,17 @@ class GitHubService
                 return $reviews;
             },
         );
+    }
+
+    /**
+     * UC06 (FR-UC06-11): submit a review decision to GitHub. `event` is
+     * APPROVE or REQUEST_CHANGES; `body` is the review note (required by
+     * GitHub for REQUEST_CHANGES). Only 200/201 responses with a known
+     * review state are accepted as synchronization evidence.
+     */
+    public function createPullRequestReview(int $number, string $event, ?string $body): GitHubApiResult
+    {
+        return $this->submitPullRequestReview($number, $event, $body);
     }
 
     /**
