@@ -50,7 +50,22 @@ interface BackendPullRequestRow {
   status?: string | null;
   lifecycle_state?: string | null;
   submission_state?: string | null;
+  review_status?: string | null;
+  review_state?: string | null;
+  ready_for_merge?: boolean | null;
   created_at?: string | null;
+}
+
+/**
+ * PR yang masih "aktif" untuk issue: sudah terbentuk di GitHub, belum ditutup, dan belum
+ * diminta perbaikan. PR dengan Changes Requested tidak boleh mengunci pengajuan PR baru (BR-18).
+ */
+function isActivePullRequest(row: BackendPullRequestRow): boolean {
+  return row.submission_state === "created"
+    && Number(row.github_pr_number ?? row.pull_request_number ?? 0) > 0
+    && !!(row.github_pr_url ?? row.pull_request_url ?? row.url)
+    && row.review_state !== "changes_requested"
+    && (row.lifecycle_state ?? "open") !== "closed";
 }
 
 interface BackendPushRow {
@@ -139,6 +154,9 @@ function mapPullRequest(row: BackendPullRequestRow): PullRequestInfo {
     target_branch: String(row.target_branch ?? ""),
     status,
     created_at: String(row.created_at ?? ""),
+    review_status: row.review_status ?? null,
+    review_state: row.review_state ?? null,
+    ready_for_merge: !!row.ready_for_merge,
   };
 }
 
@@ -245,11 +263,7 @@ async function fetchIssue(id: number): Promise<MaintenanceBacklog> {
       );
       // A failed/pending submission is NOT a real GitHub PR. Do not lock the UI
       // behind a fake 'Open' PR with number 0 on reload.
-      const existing = pullRequests.find(row =>
-        row.submission_state === 'created' &&
-        Number(row.github_pr_number ?? row.pull_request_number ?? 0) > 0 &&
-        !!(row.github_pr_url ?? row.pull_request_url ?? row.url),
-      );
+      const existing = pullRequests.find(isActivePullRequest);
       if (existing) issue.pull_request = mapPullRequest(existing);
     } catch {
       // Metadata PR bersifat pelengkap; kegagalan baca tidak boleh menggagalkan detail issue.
