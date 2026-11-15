@@ -64,7 +64,8 @@
 .ws-nav { display: flex; flex-wrap: wrap; gap: 6px; }
 .ws-nav__item { display: inline-flex; align-items: center; min-height: 38px; padding: 0 14px; border-radius: 999px; color: #e8eefc; font-size: 14px; text-decoration: none; }
 .ws-nav__item:hover { background: #12244d; }
-.ws-nav__item--active, .ws-nav__item--active:hover { background: var(--ws-accent); color: var(--ws-ink); font-weight: 700; }
+/* Senada dengan tombol utama: biru tua + teks putih, garis tipis agar terpisah dari header gelap. */
+.ws-nav__item--active, .ws-nav__item--active:hover { background: var(--ws-blue); color: #fff; font-weight: 700; box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.35); }
 
 .ws-mock { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 32px; border-bottom: 2px solid var(--ws-ink); background: var(--ws-yellow-soft); color: var(--ws-yellow); }
 .ws-mock p { margin: 0; }
@@ -162,7 +163,9 @@
 .ws-btn:not(:disabled):not([aria-disabled="true"]):hover { transform: translate(-2px, -2px); box-shadow: 4px 4px 0 var(--ws-ink); }
 .ws-btn:disabled, .ws-btn[aria-disabled="true"] { opacity: 0.5; cursor: not-allowed; }
 .ws-btn:focus-visible, .ws-pager__btn:focus-visible, .ws-nav__item:focus-visible, .ws-header__logo:focus-visible { outline: 3px solid var(--ws-accent); outline-offset: 2px; }
-.ws-btn--primary { border: 2px solid var(--ws-ink); background: var(--ws-accent); color: var(--ws-ink); }
+/* Biru tua + teks putih (kontras ±5,9:1) agar aksi utama jelas terlihat. */
+.ws-btn--primary { border: 2px solid var(--ws-ink); background: var(--ws-blue); color: #fff; }
+.ws-btn--primary:not(:disabled):not([aria-disabled="true"]):hover { background: #174ea3; }
 .ws-btn--outline { border: 2px solid var(--ws-ink); background: #fff; color: var(--ws-text); }
 .ws-btn--danger { border: 2px solid var(--ws-ink); background: #fff; color: var(--ws-red); }
 .ws-btn--ghost-light { min-height: 36px; padding: 0 14px; border: 1px solid #2c4170; border-radius: 999px; background: transparent; color: #e8eefc; font-weight: 600; }
@@ -199,7 +202,7 @@
 .ws-pager { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 18px; border-top: 1.5px solid var(--ws-line); font-size: 13px; color: var(--ws-muted); }
 .ws-pager__nav { display: flex; gap: 6px; }
 .ws-pager__btn { min-width: 38px; height: 38px; border: 2px solid var(--ws-ink); border-radius: 10px; background: #fff; font: inherit; font-weight: 800; color: var(--ws-text); cursor: pointer; }
-.ws-pager__btn[aria-current="page"] { background: var(--ws-accent); }
+.ws-pager__btn[aria-current="page"] { background: var(--ws-blue); color: #fff; }
 .ws-pager__btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
 /* ---------- Info list & form ---------- */
@@ -266,7 +269,7 @@
 .ws-flow__step--done, .ws-flow__step--current { color: var(--ws-text); }
 .ws-flow__step--done::before, .ws-flow__step--current::before { background: var(--ws-green); }
 .ws-flow__step--done .ws-flow__dot { background: var(--ws-green-soft); border-color: var(--ws-green); color: var(--ws-green); }
-.ws-flow__step--current .ws-flow__dot { background: var(--ws-accent); box-shadow: 3px 3px 0 var(--ws-ink); }
+.ws-flow__step--current .ws-flow__dot { background: var(--ws-blue); color: #fff; box-shadow: 3px 3px 0 var(--ws-ink); }
 .ws-flow__step--stopped { opacity: 0.45; text-decoration: line-through; }
 .ws-flow__note { margin: 0; padding: 0 22px 18px; font-size: 13px; color: var(--ws-red); }
 
