@@ -39,7 +39,6 @@ class PullRequestCreationTest extends Uc04Uc05TestCase
         $this->actingAs($maintenance)->getJson($path.'/pull-requests')->assertForbidden();
         $this->actingAs($maintenance)->getJson($path.'/branches')->assertForbidden();
         $this->actingAs($maintenance)->postJson($path.'/pull-requests/reconcile')->assertForbidden();
-        $this->actingAs($maintenance)->getJson('/api/v1/pull-requests/1')->assertForbidden();
     }
 
     public function test_validation_rejects_incomplete_payload(): void

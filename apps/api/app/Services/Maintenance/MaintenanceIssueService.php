@@ -22,6 +22,7 @@ class MaintenanceIssueService
     private const ACTIVE_STATUSES = [
         MaintenanceBacklog::STATUS_IN_PROGRESS,
         MaintenanceBacklog::STATUS_READY_PULL_REQUEST,
+        MaintenanceBacklog::STATUS_READY_MERGE,
     ];
 
     public function __construct(
@@ -292,9 +293,11 @@ class MaintenanceIssueService
                 ? Carbon::parse($pushedAt)
                 : now();
 
-            $newStatus = $backlog->status === MaintenanceBacklog::STATUS_IN_PROGRESS
-                ? MaintenanceBacklog::STATUS_READY_PULL_REQUEST
-                : $backlog->status;
+            $newStatus = match ($backlog->status) {
+                MaintenanceBacklog::STATUS_IN_PROGRESS => MaintenanceBacklog::STATUS_READY_PULL_REQUEST,
+                MaintenanceBacklog::STATUS_READY_MERGE => MaintenanceBacklog::STATUS_READY_PULL_REQUEST,
+                default => $backlog->status,
+            };
 
             DB::table('maintenance_backlog')
                 ->where('backlog_id', $backlogId)
@@ -333,6 +336,7 @@ class MaintenanceIssueService
             MaintenanceBacklog::STATUS_READY_DEVELOPMENT,
             MaintenanceBacklog::STATUS_IN_PROGRESS,
             MaintenanceBacklog::STATUS_READY_PULL_REQUEST,
+            MaintenanceBacklog::STATUS_READY_MERGE,
             MaintenanceBacklog::STATUS_DONE,
         ];
     }

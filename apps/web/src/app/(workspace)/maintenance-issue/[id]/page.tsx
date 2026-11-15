@@ -192,6 +192,9 @@ function IssueDetail() {
                 {issue.pull_request && (
                   <InfoRow label="Pull request">
                     PR #{issue.pull_request.github_pr_number} · {issue.pull_request.status}{" "}
+                    {issue.pull_request.pr_id > 0 && (
+                      <Link href={`/pull-requests/${issue.pull_request.pr_id}`}>Lihat review</Link>
+                    )}{" "}
                     <a href={issue.pull_request.url} target="_blank" rel="noreferrer">Buka di GitHub</a>
                   </InfoRow>
                 )}

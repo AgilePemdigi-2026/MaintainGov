@@ -14,6 +14,8 @@ class MaintenanceBacklog extends Model
 
     public const STATUS_READY_PULL_REQUEST = 'Ready for Pull Request';
 
+    public const STATUS_READY_MERGE = 'Ready for Merge';
+
     public const STATUS_DONE = 'Selesai';
 
     protected $table = 'maintenance_backlog';

@@ -622,6 +622,16 @@ class PullRequestService
     }
 
     /**
+     * Public presenter reused by UC06 without duplicating field mapping.
+     *
+     * @return array<string, mixed>
+     */
+    public function present(PullRequest $pullRequest): array
+    {
+        return $this->map($pullRequest);
+    }
+
+    /**
      * @return array<string, mixed>
      */
     private function map(PullRequest $pullRequest): array
@@ -638,6 +648,7 @@ class PullRequestService
                 'nama' => $pullRequest->developer->nama,
                 'github_login' => $pullRequest->developer->github_login,
             ],
+            'author_login' => $pullRequest->author_login,
             'repository' => [
                 'full_name' => $pullRequest->repository_full_name,
                 'owner' => $pullRequest->repository?->owner,
@@ -658,6 +669,13 @@ class PullRequestService
             'status_label' => Str::ucfirst((string) $status),
             'submission_state' => $pullRequest->submission_state,
             'lifecycle_state' => $pullRequest->lifecycle_state,
+            'is_draft' => (bool) $pullRequest->is_draft,
+            'review_state' => $pullRequest->review_state,
+            'merged_at' => $pullRequest->merged_at?->toIso8601String(),
+            'closed_at' => $pullRequest->closed_at?->toIso8601String(),
+            'github_created_at' => $pullRequest->github_created_at?->toIso8601String(),
+            'github_updated_at' => $pullRequest->github_updated_at?->toIso8601String(),
+            'last_synced_at' => $pullRequest->last_synced_at?->toIso8601String(),
             'head_sha' => $pullRequest->github_head_sha,
             'base_sha' => $pullRequest->github_base_sha,
             'last_error_code' => $pullRequest->last_error_code,

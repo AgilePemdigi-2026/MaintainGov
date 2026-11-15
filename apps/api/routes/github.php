@@ -40,7 +40,23 @@ Route::middleware(['auth', 'role:Developer'])->group(function () {
         ->whereNumber('issue');
     Route::post('/maintenance-backlogs/{issue}/pull-requests/reconcile', [PullRequestController::class, 'reconcile'])
         ->whereNumber('issue');
+});
+
+// UC06 read + synchronization. The reviewer (Tim Maintenance) and the author
+// (Developer) may both read a Pull Request; the service enforces ownership for
+// Developers so one developer cannot read another developer's PR.
+Route::middleware(['auth', 'role:Tim Maintenance,Developer'])->group(function () {
+    Route::get('/pull-requests', [PullRequestController::class, 'indexAll']);
     Route::get('/pull-requests/{pullRequest}', [PullRequestController::class, 'show'])
+        ->whereNumber('pullRequest');
+    Route::post('/pull-requests/{pullRequest}/sync', [PullRequestController::class, 'sync'])
+        ->whereNumber('pullRequest');
+});
+
+// UC06 review decision. Only the Tim Maintenance role may review; the service
+// additionally rejects self-review and GitHub identity mismatches.
+Route::middleware(['auth', 'role:Tim Maintenance'])->group(function () {
+    Route::post('/pull-requests/{pullRequest}/reviews', [PullRequestController::class, 'review'])
         ->whereNumber('pullRequest');
 });
 

@@ -11,7 +11,8 @@ import { mockApi } from "./mock";
 import type {
   AuthUser, BacklogListQuery, BacklogStatus, BacklogUpdate, BranchPreparation, CaseDecision, CaseListQuery,
   CaseValidationResult, MaintenanceBacklog, MaintenanceCase, MaintenanceCaseDetail, Paged, PullRequestCreate,
-  PullRequestInfo, PullRequestOptions,
+  PullRequestDetail, PullRequestInfo, PullRequestListQuery, PullRequestOptions, PullRequestRecord, PullRequestReview,
+  PullRequestReviewResult, PullRequestReviewState, PullRequestReviewSubmission, PullRequestSummary,
 } from "./types";
 
 export interface Sprint2Api {
@@ -28,6 +29,10 @@ export interface Sprint2Api {
   claimBacklog(id: number): Promise<MaintenanceBacklog>;
   getPullRequestOptions(id: number): Promise<PullRequestOptions>;
   createPullRequest(id: number, input: PullRequestCreate): Promise<PullRequestInfo>;
+  listPullRequests(query?: PullRequestListQuery): Promise<Paged<PullRequestSummary>>;
+  getPullRequest(id: number): Promise<PullRequestDetail>;
+  syncPullRequest(id: number): Promise<PullRequestDetail>;
+  submitPullRequestReview(id: number, input: PullRequestReviewSubmission): Promise<PullRequestReviewResult>;
 }
 
 interface BackendPage<T> {
@@ -107,6 +112,77 @@ interface BackendBranches {
   default_branch?: string | null;
   branches?: { name: string }[];
   repository?: { full_name?: string | null } | null;
+}
+
+interface BackendPullRequestIssueRef {
+  issue_id?: number | string;
+  backlog_id?: number | string;
+  title?: string | null;
+  status?: string | null;
+  source_branch?: string | null;
+}
+
+interface BackendPullRequestReviewRow {
+  code_review_id?: number | string;
+  github_review_id?: number | string | null;
+  reviewer_id?: number | string | null;
+  reviewer?: { user_id?: number | string | null; nama?: string | null; github_login?: string | null } | null;
+  reviewer_login?: string | null;
+  github_state?: string | null;
+  decision?: string | null;
+  body?: string | null;
+  commit_id?: string | null;
+  html_url?: string | null;
+  source?: string | null;
+  submitted_at?: string | null;
+  synced_at?: string | null;
+}
+
+interface BackendPullRequestRecordRow {
+  pull_request_id?: number | string;
+  issue_id?: number | string;
+  backlog_id?: number | string;
+  developer_id?: number | string;
+  developer?: { user_id?: number | string; nama?: string | null; github_login?: string | null } | null;
+  author?: { user_id?: number | string | null; nama?: string | null; github_login?: string | null } | null;
+  repository?: { full_name?: string | null; owner?: string | null; name?: string | null; html_url?: string | null } | null;
+  source_branch?: string | null;
+  target_branch?: string | null;
+  title?: string | null;
+  description?: string | null;
+  github_pr_number?: number | string | null;
+  pull_request_number?: number | string | null;
+  github_pr_url?: string | null;
+  pull_request_url?: string | null;
+  lifecycle_state?: string | null;
+  status?: string | null;
+  submission_state?: string | null;
+  is_draft?: boolean;
+  review_state?: string | null;
+  merged_at?: string | null;
+  closed_at?: string | null;
+  github_created_at?: string | null;
+  github_updated_at?: string | null;
+  last_synced_at?: string | null;
+  head_sha?: string | null;
+  base_sha?: string | null;
+  created_at?: string | null;
+  issue?: BackendPullRequestIssueRef | null;
+  reviews_count?: number | string | null;
+  reviews?: BackendPullRequestReviewRow[] | null;
+  review_summary?: { approved?: number | string; changes_requested?: number | string; dismissed?: number | string } | null;
+}
+
+interface BackendPullRequestReviewResponse {
+  data: BackendPullRequestRecordRow;
+  message?: string;
+  meta: {
+    review?: BackendPullRequestReviewRow | null;
+    created?: boolean;
+    reconciled?: boolean;
+    idempotent_replay?: boolean;
+    sync_pending?: boolean;
+  };
 }
 
 function qs(query: object = {}): string {
@@ -252,6 +328,126 @@ function mapBranchOptions(data: BackendBranches): PullRequestOptions {
   };
 }
 
+function normalizeLifecycle(value: unknown): PullRequestRecord["lifecycle_state"] {
+  const state = String(value ?? "open").toLowerCase();
+  if (state === "merged") return "merged";
+  if (state === "closed") return "closed";
+  return "open";
+}
+
+function normalizeReviewState(value: unknown): PullRequestReviewState {
+  const state = String(value ?? "pending").toLowerCase();
+  return state === "approved" || state === "changes_requested" ? state : "pending";
+}
+
+function mapPullRequestReviewer(
+  row: { user_id?: number | string | null; nama?: string | null; github_login?: string | null } | null | undefined,
+): PullRequestReview["reviewer"] {
+  return {
+    user_id: row?.user_id === null || row?.user_id === undefined ? null : asNumber(row.user_id),
+    nama: row?.nama ?? null,
+    github_login: row?.github_login ?? null,
+  };
+}
+
+function mapPullRequestReview(row: BackendPullRequestReviewRow): PullRequestReview {
+  const githubState = String(row.github_state ?? "PENDING").toUpperCase();
+  const decision = row.decision === "approved" || row.decision === "changes_requested"
+    || row.decision === "dismissed" || row.decision === "commented"
+    ? row.decision
+    : githubState === "APPROVED" ? "approved"
+      : githubState === "CHANGES_REQUESTED" ? "changes_requested"
+        : githubState === "DISMISSED" ? "dismissed" : "commented";
+
+  return {
+    code_review_id: asNumber(row.code_review_id),
+    github_review_id: row.github_review_id === null || row.github_review_id === undefined ? null : asNumber(row.github_review_id),
+    reviewer_id: row.reviewer_id === null || row.reviewer_id === undefined ? null : asNumber(row.reviewer_id),
+    reviewer: mapPullRequestReviewer(row.reviewer),
+    reviewer_login: String(row.reviewer_login ?? row.reviewer?.github_login ?? ""),
+    github_state: githubState,
+    decision,
+    body: row.body ?? null,
+    commit_id: row.commit_id ?? null,
+    html_url: row.html_url ?? null,
+    source: String(row.source ?? ""),
+    submitted_at: row.submitted_at ?? null,
+    synced_at: row.synced_at ?? null,
+  };
+}
+
+function mapPullRequestRecord(row: BackendPullRequestRecordRow): PullRequestRecord {
+  return {
+    pull_request_id: asNumber(row.pull_request_id),
+    issue_id: asNumber(row.issue_id ?? row.backlog_id),
+    backlog_id: asNumber(row.backlog_id ?? row.issue_id),
+    developer_id: asNumber(row.developer_id),
+    developer: row.developer
+      ? {
+        user_id: asNumber(row.developer.user_id),
+        nama: row.developer.nama ?? null,
+        github_login: row.developer.github_login ?? null,
+      }
+      : null,
+    author: row.author
+      ? mapPullRequestReviewer(row.author)
+      : mapPullRequestReviewer(row.developer),
+    repository: {
+      full_name: String(row.repository?.full_name ?? ""),
+      owner: row.repository?.owner ?? null,
+      name: row.repository?.name ?? null,
+      html_url: row.repository?.html_url ?? null,
+    },
+    source_branch: String(row.source_branch ?? ""),
+    target_branch: String(row.target_branch ?? ""),
+    title: String(row.title ?? ""),
+    description: row.description ?? null,
+    github_pr_number: asNumber(row.github_pr_number ?? row.pull_request_number),
+    github_pr_url: String(row.github_pr_url ?? row.pull_request_url ?? ""),
+    lifecycle_state: normalizeLifecycle(row.lifecycle_state ?? row.status),
+    is_draft: Boolean(row.is_draft),
+    review_state: normalizeReviewState(row.review_state),
+    merged_at: row.merged_at ?? null,
+    closed_at: row.closed_at ?? null,
+    github_created_at: row.github_created_at ?? null,
+    github_updated_at: row.github_updated_at ?? null,
+    last_synced_at: row.last_synced_at ?? null,
+    head_sha: row.head_sha ?? null,
+    base_sha: row.base_sha ?? null,
+    created_at: row.created_at ?? null,
+    issue: row.issue
+      ? {
+        issue_id: asNumber(row.issue.issue_id ?? row.issue.backlog_id),
+        backlog_id: asNumber(row.issue.backlog_id ?? row.issue.issue_id),
+        title: row.issue.title ?? null,
+        status: String(row.issue.status ?? "Ready for Pull Request") as BacklogStatus,
+        source_branch: row.issue.source_branch ?? null,
+      }
+      : null,
+  };
+}
+
+function mapPullRequestSummary(row: BackendPullRequestRecordRow): PullRequestSummary {
+  return { ...mapPullRequestRecord(row), reviews_count: asNumber(row.reviews_count) };
+}
+
+function mapPullRequestDetail(row: BackendPullRequestRecordRow): PullRequestDetail {
+  const reviews = (row.reviews ?? []).map(mapPullRequestReview);
+  const summary = row.review_summary;
+
+  return {
+    ...mapPullRequestRecord(row),
+    reviews,
+    review_summary: {
+      approved: asNumber(summary?.approved ?? reviews.filter(review => review.github_state === "APPROVED").length),
+      changes_requested: asNumber(
+        summary?.changes_requested ?? reviews.filter(review => review.github_state === "CHANGES_REQUESTED").length,
+      ),
+      dismissed: asNumber(summary?.dismissed ?? reviews.filter(review => review.github_state === "DISMISSED").length),
+    },
+  };
+}
+
 async function fetchBacklog(id: number): Promise<MaintenanceBacklog> {
   const { data } = await apiFetch<{ data: BackendBacklogRow }>(`/maintenance-backlog/${id}`);
   return mapBacklog(data);
@@ -363,6 +559,50 @@ export const liveApi: Sprint2Api = {
       }),
     });
     return mapPullRequest(data);
+  },
+  // UC06: list/detail/sync/review. Backend tetap otoritatif atas akses dan
+  // identitas reviewer; klien hanya menampilkan hasilnya.
+  listPullRequests: async (query = {}) => {
+    const page = await apiFetch<BackendPage<BackendPullRequestRecordRow>>(`/pull-requests${qs(query)}`);
+    return { ...page, data: page.data.map(mapPullRequestSummary) };
+  },
+  getPullRequest: async id => {
+    const { data } = await apiFetch<{ data: BackendPullRequestRecordRow }>(`/pull-requests/${id}`);
+    return mapPullRequestDetail(data);
+  },
+  syncPullRequest: async id => {
+    const { data } = await apiFetch<{ data: BackendPullRequestRecordRow }>(`/pull-requests/${id}/sync`, {
+      method: "POST",
+      ...json({}),
+    });
+    return mapPullRequestDetail(data);
+  },
+  submitPullRequestReview: async (id, input) => {
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+
+    if (input.idempotency_key) {
+      headers["Idempotency-Key"] = input.idempotency_key;
+    }
+
+    const response = await apiFetch<BackendPullRequestReviewResponse>(`/pull-requests/${id}/reviews`, {
+      method: "POST",
+      body: JSON.stringify({ decision: input.decision, notes: input.notes ?? "" }),
+      headers,
+    });
+
+    if (!response.meta?.review) {
+      throw new Error("GitHub tidak mengembalikan data review.");
+    }
+
+    return {
+      pull_request: mapPullRequestDetail(response.data),
+      review: mapPullRequestReview(response.meta.review),
+      created: Boolean(response.meta.created),
+      reconciled: Boolean(response.meta.reconciled),
+      idempotent_replay: Boolean(response.meta.idempotent_replay),
+      sync_pending: Boolean(response.meta.sync_pending),
+      message: response.message ?? "Keputusan review tersimpan.",
+    };
   },
 };
 

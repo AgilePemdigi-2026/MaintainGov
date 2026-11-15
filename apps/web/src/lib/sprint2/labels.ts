@@ -1,5 +1,5 @@
 // Satu tempat untuk label UI, pesan wajib dari Use Case Week 6, dan mapping prioritas.
-import type { BacklogStatus, CaseStatus } from "./types";
+import type { BacklogStatus, CaseStatus, PullRequestReviewState } from "./types";
 
 /** Pesan persis dari UC02–UC05 / US02–US05. Jangan ubah tanpa memperbarui artefak. */
 export const MESSAGES = {
@@ -36,6 +36,45 @@ export const BACKLOG_STATUS_TONE: Record<BacklogStatus, string> = {
 };
 
 export const BACKLOG_STATUSES = Object.keys(BACKLOG_STATUS_LABEL) as BacklogStatus[];
+
+/** Label lifecycle GitHub untuk Pull Request UC06. */
+export const PR_LIFECYCLE_LABEL: Record<string, string> = {
+  open: "Open",
+  closed: "Closed",
+  merged: "Merged",
+};
+
+export const PR_LIFECYCLE_TONE: Record<string, string> = {
+  open: "ready",
+  closed: "muted",
+  merged: "done",
+};
+
+export const REVIEW_STATE_LABEL: Record<PullRequestReviewState, string> = {
+  pending: "Menunggu review",
+  approved: "Disetujui",
+  changes_requested: "Perlu perbaikan",
+};
+
+export const REVIEW_STATE_TONE: Record<PullRequestReviewState, string> = {
+  pending: "pending",
+  approved: "done",
+  changes_requested: "progress",
+};
+
+export const REVIEW_DECISION_LABEL: Record<string, string> = {
+  approved: "Approved",
+  changes_requested: "Changes requested",
+  commented: "Commented",
+  dismissed: "Dismissed",
+};
+
+export const REVIEW_DECISION_TONE: Record<string, string> = {
+  approved: "done",
+  changes_requested: "progress",
+  commented: "muted",
+  dismissed: "muted",
+};
 
 export const SEVERITIES = ["Critical", "High", "Medium", "Low"] as const;
 

@@ -1,4 +1,4 @@
-// Kontrak frontend Sprint 2 (UC02–UC05), draf v0.1 mengikuti docs/ARCHITECTURE.md §4–6.
+// Kontrak frontend Sprint 2 (UC02–UC06), draf v0.1 mengikuti docs/ARCHITECTURE.md §4–6.
 // Nama field mengikuti PDM (maintenance_case, maintenance_backlog, pull_request). Sesuaikan
 // bila kontrak final Axel (UC02/UC03) dan Hanif (UC04/UC05) di contracts/ berbeda.
 import type { AuthUser, CaseStatus } from "@/lib/types";
@@ -147,4 +147,104 @@ export interface PullRequestCreate {
   target_branch: string;
   judul: string;
   deskripsi: string;
+}
+
+/** UC06 — status lifecycle Pull Request yang disinkronkan dari GitHub. */
+export type PullRequestLifecycle = "open" | "closed" | "merged";
+
+/** Ringkasan keputusan review gabungan seluruh reviewer. */
+export type PullRequestReviewState = "pending" | "approved" | "changes_requested";
+
+export type PullRequestReviewDecision = "APPROVE" | "REQUEST_CHANGES";
+
+export interface PullRequestReviewerRef {
+  user_id: number | null;
+  nama: string | null;
+  github_login: string | null;
+}
+
+export interface PullRequestReview {
+  code_review_id: number;
+  github_review_id: number | null;
+  reviewer_id: number | null;
+  reviewer: PullRequestReviewerRef;
+  reviewer_login: string;
+  /** State asli GitHub: APPROVED, CHANGES_REQUESTED, COMMENTED, DISMISSED, PENDING. */
+  github_state: string;
+  decision: "approved" | "changes_requested" | "dismissed" | "commented";
+  body: string | null;
+  commit_id: string | null;
+  html_url: string | null;
+  source: string;
+  submitted_at: string | null;
+  synced_at: string | null;
+}
+
+export interface PullRequestIssueRef {
+  issue_id: number;
+  backlog_id: number;
+  title: string | null;
+  status: BacklogStatus;
+  source_branch: string | null;
+}
+
+/** Snapshot Pull Request yang dipakai halaman daftar dan detail UC06. */
+export interface PullRequestRecord {
+  pull_request_id: number;
+  issue_id: number;
+  backlog_id: number;
+  developer_id: number;
+  developer: PullRequestReviewerRef | null;
+  author: PullRequestReviewerRef;
+  repository: { full_name: string; owner: string | null; name: string | null; html_url: string | null };
+  source_branch: string;
+  target_branch: string;
+  title: string;
+  description: string | null;
+  github_pr_number: number;
+  github_pr_url: string;
+  lifecycle_state: PullRequestLifecycle;
+  is_draft: boolean;
+  review_state: PullRequestReviewState;
+  merged_at: string | null;
+  closed_at: string | null;
+  github_created_at: string | null;
+  github_updated_at: string | null;
+  last_synced_at: string | null;
+  head_sha: string | null;
+  base_sha: string | null;
+  created_at: string | null;
+  issue: PullRequestIssueRef | null;
+}
+
+export interface PullRequestSummary extends PullRequestRecord {
+  reviews_count: number;
+}
+
+export interface PullRequestDetail extends PullRequestRecord {
+  reviews: PullRequestReview[];
+  review_summary: { approved: number; changes_requested: number; dismissed: number };
+}
+
+export interface PullRequestListQuery {
+  status?: PullRequestLifecycle | "all" | "";
+  search?: string;
+  page?: number;
+  per_page?: number;
+}
+
+export interface PullRequestReviewSubmission {
+  decision: PullRequestReviewDecision;
+  notes?: string;
+  idempotency_key?: string;
+}
+
+export interface PullRequestReviewResult {
+  pull_request: PullRequestDetail;
+  review: PullRequestReview;
+  created: boolean;
+  reconciled: boolean;
+  idempotent_replay: boolean;
+  sync_pending: boolean;
+  message: string;
 }

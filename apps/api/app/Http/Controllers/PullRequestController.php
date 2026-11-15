@@ -4,11 +4,15 @@ namespace App\Http\Controllers;
 
 use App\Exceptions\ApiException;
 use App\Http\Requests\ListBranchesRequest;
+use App\Http\Requests\ListPullRequestsRequest;
 use App\Http\Requests\StorePullRequestRequest;
+use App\Http\Requests\SubmitPullRequestReviewRequest;
 use App\Models\MaintenanceBacklog;
+use App\Models\PullRequest;
 use App\Services\GitHub\GitHubErrorMapper;
 use App\Services\GitHub\GitHubService;
 use App\Services\Maintenance\MaintenanceIssueService;
+use App\Services\PullRequest\PullRequestReviewService;
 use App\Services\PullRequest\PullRequestService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -55,13 +59,84 @@ class PullRequestController extends Controller
         ], $result['created'] ? 201 : 200);
     }
 
-    public function show(int $pullRequest, PullRequestService $pullRequests): JsonResponse
-    {
+    /**
+     * UC06 list of Pull Requests. Tim Maintenance sees all; a Developer sees
+     * only Pull Requests they authored.
+     */
+    public function indexAll(
+        ListPullRequestsRequest $request,
+        PullRequestReviewService $reviews,
+    ): JsonResponse {
+        $result = $reviews->list($request->user(), $request->validated());
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Daftar Pull Request.',
+            'data' => $result['data'],
+            'meta' => $result['meta'],
+        ]);
+    }
+
+    public function show(
+        Request $request,
+        int $pullRequest,
+        PullRequestReviewService $reviews,
+    ): JsonResponse {
+        $record = $this->findPullRequest($pullRequest);
+
         return response()->json([
             'success' => true,
             'message' => 'Detail Pull Request.',
-            'data' => $pullRequests->show($pullRequest),
+            'data' => $reviews->detail($record, $request->user(), refresh: false),
         ]);
+    }
+
+    /**
+     * Fetch the latest PR + review snapshot from GitHub and persist it.
+     */
+    public function sync(
+        Request $request,
+        int $pullRequest,
+        PullRequestReviewService $reviews,
+    ): JsonResponse {
+        $record = $this->findPullRequest($pullRequest);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Pull Request berhasil disinkronkan dengan GitHub.',
+            'data' => $reviews->detail($record, $request->user(), refresh: true),
+        ]);
+    }
+
+    /**
+     * UC06 Approve / Request Changes. A success response is returned only after
+     * GitHub accepted the review (or the review was reconciled from GitHub).
+     */
+    public function review(
+        SubmitPullRequestReviewRequest $request,
+        int $pullRequest,
+        PullRequestReviewService $reviews,
+    ): JsonResponse {
+        $record = $this->findPullRequest($pullRequest);
+        $result = $reviews->submitReview(
+            $record,
+            $request->user(),
+            $request->validated(),
+            $request->validated('idempotency_key'),
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => $result['message'],
+            'data' => $result['data'],
+            'meta' => [
+                'review' => $result['review'],
+                'created' => $result['created'],
+                'reconciled' => $result['reconciled'],
+                'idempotent_replay' => $result['idempotent_replay'],
+                'sync_pending' => $result['sync_pending'],
+            ],
+        ], $result['created'] ? 201 : 200);
     }
 
     public function branches(
@@ -130,5 +205,19 @@ class PullRequestController extends Controller
                 : 'Tidak ada metadata Pull Request yang dapat direkonsiliasi.',
             'data' => $result,
         ]);
+    }
+
+    private function findPullRequest(int $pullRequest): PullRequest
+    {
+        $record = PullRequest::query()->find($pullRequest);
+
+        if ($record === null) {
+            throw ApiException::notFound(
+                'Pull Request tidak ditemukan.',
+                'PULL_REQUEST_NOT_FOUND',
+            );
+        }
+
+        return $record;
     }
 }

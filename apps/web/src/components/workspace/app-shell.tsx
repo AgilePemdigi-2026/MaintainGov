@@ -21,6 +21,10 @@ const NAV: { group: string; items: { href: string; label: string; roles: string[
     group: "Tim Developer",
     items: [{ href: "/maintenance-issue", label: "Maintenance Issue", roles: ["Developer"] }],
   },
+  {
+    group: "Kolaborasi",
+    items: [{ href: "/pull-requests", label: "Pull Request", roles: ["Tim Maintenance", "Developer"] }],
+  },
 ];
 
 function initials(name: string) {

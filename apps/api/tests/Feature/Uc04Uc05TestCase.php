@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\MaintenanceBacklog;
 use App\Models\Pengguna;
+use App\Models\PullRequest;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\DB;
@@ -227,10 +228,116 @@ abstract class Uc04Uc05TestCase extends TestCase
             'number' => $number,
             'html_url' => 'https://github.com/'.self::OWNER.'/'.self::REPO.'/pull/'.$number,
             'state' => $state,
-            'head' => ['sha' => $headSha],
-            'base' => ['sha' => $baseSha],
+            'head' => [
+                'sha' => $headSha,
+                'ref' => self::SOURCE_BRANCH,
+                'repo' => ['full_name' => self::OWNER.'/'.self::REPO],
+            ],
+            'base' => [
+                'sha' => $baseSha,
+                'ref' => self::DEFAULT_BRANCH,
+                'repo' => ['full_name' => self::OWNER.'/'.self::REPO],
+            ],
             'title' => 'Perbaikan notifikasi',
+            'body' => 'Perubahan untuk issue notifikasi.',
             'draft' => false,
+            'merged' => false,
+            'merged_at' => null,
+            'closed_at' => null,
+            'created_at' => '2026-11-04T09:00:00Z',
+            'updated_at' => '2026-11-04T10:00:00Z',
+            'user' => ['login' => 'dev-gh'],
+        ];
+    }
+
+    /**
+     * Insert a GitHub-confirmed Pull Request snapshot for UC06 tests.
+     *
+     * @param  array<string, mixed>  $backlogOverrides
+     * @param  array<string, mixed>  $pullRequestOverrides
+     * @return array{issue: array<string, mixed>, record: PullRequest, number: int}
+     */
+    protected function createPullRequestRecord(
+        Pengguna $developer,
+        array $backlogOverrides = [],
+        array $pullRequestOverrides = [],
+    ): array {
+        $issue = $this->readyForPullRequestIssue($developer, $backlogOverrides);
+        $seed = ((int) DB::table('pull_request')->max('pull_request_id')) + 1;
+        $number = 100 + $seed;
+
+        $record = PullRequest::query()->create(array_merge([
+            'backlog_id' => $issue['backlog_id'],
+            'developer_id' => $developer->user_id,
+            'repository_full_name' => self::OWNER.'/'.self::REPO,
+            'author_login' => $developer->github_login,
+            'source_branch' => self::SOURCE_BRANCH,
+            'target_branch' => self::DEFAULT_BRANCH,
+            'title' => 'Perbaikan notifikasi',
+            'description' => 'Perubahan untuk issue notifikasi.',
+            'github_pr_id' => 900000 + $seed,
+            'github_pr_number' => $number,
+            'github_pr_url' => 'https://github.com/'.self::OWNER.'/'.self::REPO.'/pull/'.$number,
+            'github_head_sha' => self::SOURCE_SHA,
+            'github_base_sha' => self::BASE_SHA,
+            'submission_state' => 'created',
+            'lifecycle_state' => 'open',
+            'is_draft' => false,
+            'review_state' => 'pending',
+            'request_fingerprint' => hash('sha256', uniqid('uc06-pr-', true)),
+            'last_synced_at' => now(),
+        ], $pullRequestOverrides));
+
+        return ['issue' => $issue, 'record' => $record->fresh(), 'number' => $number];
+    }
+
+    /**
+     * Fake GitHub PR detail + review list for refresh/sync tests.
+     *
+     * @param  array<string, mixed>  $pullRequestOverrides
+     * @param  array<int, array<string, mixed>>  $reviews
+     */
+    protected function fakePullRequestSnapshot(
+        PullRequest $record,
+        array $pullRequestOverrides = [],
+        array $reviews = [],
+    ): void {
+        $base = 'https://api.github.test/repos/'.self::OWNER.'/'.self::REPO;
+        $payload = array_merge(
+            $this->pullRequestPayload(
+                headSha: (string) $record->github_head_sha,
+                baseSha: (string) $record->github_base_sha,
+                id: (int) $record->github_pr_id,
+                number: (int) $record->github_pr_number,
+            ),
+            $pullRequestOverrides,
+        );
+
+        Http::fake([
+            $base.'/pulls/'.$record->github_pr_number.'/reviews*' => Http::response($reviews),
+            $base.'/pulls/'.$record->github_pr_number => Http::response($payload),
+        ]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function reviewPayload(
+        string $login = 'reviewer-gh',
+        string $state = 'APPROVED',
+        ?string $body = null,
+        ?string $commitId = self::SOURCE_SHA,
+        int $id = 5001,
+        ?string $submittedAt = '2026-11-04T10:05:00Z',
+    ): array {
+        return [
+            'id' => $id,
+            'user' => ['login' => $login],
+            'state' => $state,
+            'body' => $body,
+            'commit_id' => $commitId,
+            'html_url' => 'https://github.com/'.self::OWNER.'/'.self::REPO.'/pull/'.self::PR_NUMBER.'#pullrequestreview-'.$id,
+            'submitted_at' => $submittedAt,
         ];
     }
 
