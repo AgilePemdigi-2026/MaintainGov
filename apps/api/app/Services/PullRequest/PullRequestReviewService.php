@@ -726,6 +726,16 @@ class PullRequestReviewService
             }
 
             $state = $review['state'] ?? 'COMMENTED';
+
+            if ($state === 'DISMISSED') {
+                CodeReview::query()
+                    ->where('pull_request_id', $record->pull_request_id)
+                    ->where('reviewer_id', $reviewerId)
+                    ->delete();
+
+                continue;
+            }
+
             $decision = match ($state) {
                 'APPROVED' => CodeReview::DECISION_APPROVE,
                 'CHANGES_REQUESTED' => CodeReview::DECISION_REQUEST_CHANGES,

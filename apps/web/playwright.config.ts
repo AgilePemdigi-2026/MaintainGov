@@ -17,4 +17,10 @@ export default defineConfig({
       args: ["--no-sandbox", "--disable-dev-shm-usage", "--single-process", "--no-zygote", "--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"],
     } : undefined,
   },
+  webServer: {
+    command: "npm run start",
+    url: "http://127.0.0.1:3000",
+    reuseExistingServer: true,
+    timeout: 120_000,
+  },
 });

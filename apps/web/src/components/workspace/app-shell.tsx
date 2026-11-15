@@ -28,10 +28,6 @@ const NAV: { group: string; items: { href: string; label: string; roles: string[
     group: "Pemantauan",
     items: [{ href: "/riwayat", label: "Status & Riwayat", roles: ["Tim Maintenance", "Developer"] }],
   },
-  {
-    group: "Kolaborasi",
-    items: [{ href: "/pull-requests", label: "Pull Request", roles: ["Tim Maintenance", "Developer"] }],
-  },
 ];
 
 function initials(name: string) {
