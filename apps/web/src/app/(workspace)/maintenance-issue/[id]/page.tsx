@@ -123,6 +123,7 @@ function IssueDetail() {
         meta={<><span>{code}</span> · <BacklogStatusPill status={issue.status} /> · <span>Dari case {caseCode(issue.case_id)}</span></>}
         actions={
           <>
+            <Link className="ws-btn ws-btn--outline" href={`/riwayat/${issue.case_id}`}>Riwayat</Link>
             {canPr
               ? <Link className="ws-btn ws-btn--outline" href={`/maintenance-issue/${issue.backlog_id}/pull-request`}>Ajukan pull request</Link>
               : <button type="button" className="ws-btn ws-btn--outline" disabled>Ajukan pull request</button>}
@@ -178,7 +179,8 @@ function IssueDetail() {
                 </InfoRow>
                 {issue.pull_request && (
                   <InfoRow label="Pull request">
-                    PR #{issue.pull_request.github_pr_number} · {issue.pull_request.status}{" "}
+                    <Link href={`/pull-request/${issue.pull_request.pr_id}`}>PR #{issue.pull_request.github_pr_number}</Link>
+                    {" · "}{issue.pull_request.ready_for_merge ? "Ready for Merge" : issue.pull_request.review_status ?? issue.pull_request.status}{" "}
                     <a href={issue.pull_request.url} target="_blank" rel="noreferrer">Buka di GitHub</a>
                   </InfoRow>
                 )}

@@ -112,6 +112,7 @@ function CaseDetail({ id }: { id: number }) {
             <span>Dibuat {formatDateTime(data.created_at)}</span>
           </>
         }
+        actions={<Link className="ws-btn ws-btn--outline" href={`/riwayat/${data.case_id}`}>Riwayat</Link>}
       />
 
       {success && <Alert tone="success" title={success} onClose={() => setSuccess(null)} />}
