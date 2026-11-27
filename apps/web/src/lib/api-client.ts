@@ -6,6 +6,8 @@ export class ApiError extends Error {
   constructor(
     public status: number,
     message: string,
+    /** Stable machine-readable code from the API envelope, e.g. GITHUB_UNAUTHORIZED. */
+    public code?: string,
   ) {
     super(message);
     this.name = "ApiError";
@@ -65,6 +67,7 @@ export async function apiFetch<T>(
     const errorBody = body as {
       errors?: Record<string, string[]>;
       message?: string;
+      error?: { code?: string };
     };
 
     const details = errorBody.errors
@@ -74,6 +77,7 @@ export async function apiFetch<T>(
     throw new ApiError(
       response.status,
       details || errorBody.message || "Permintaan gagal. Silakan coba kembali.",
+      errorBody.error?.code,
     );
   }
 

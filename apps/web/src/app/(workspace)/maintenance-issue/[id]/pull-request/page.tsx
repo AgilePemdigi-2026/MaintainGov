@@ -6,7 +6,7 @@ import type { FormEvent } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { ApiError } from "@/lib/api";
-import { RoleGate, useSession } from "@/components/workspace/session";
+import { RoleGate, isGitHubError, useSession } from "@/components/workspace/session";
 import { Alert, EmptyState, ErrorState, InfoRow, PageHeader, SkeletonRows } from "@/components/workspace/ui";
 import { githubSprint2, isMockMode, sprint2Api } from "@/lib/sprint2/client";
 import { MESSAGES, backlogCode } from "@/lib/sprint2/labels";
@@ -64,7 +64,7 @@ function PullRequestForm() {
     })()
       .catch(err => {
         if (!active) return;
-        if (err instanceof ApiError && err.status === 404) setNotFound(true);
+        if (err instanceof ApiError && err.status === 404 && !isGitHubError(err)) setNotFound(true);
         else setLoadError(handleError(err, "Data pull request tidak dapat dimuat."));
       })
       .finally(() => { if (active) setLoading(false); });
@@ -125,7 +125,7 @@ function PullRequestForm() {
     );
   }
   if (loading && !issue) return <div className="ws-content"><SkeletonRows rows={4} /></div>;
-  if (loadError && !issue) return <div className="ws-content"><ErrorState message={loadError} onRetry={reload} /></div>;
+  if (loadError) return <div className="ws-content"><ErrorState message={loadError} onRetry={reload} /></div>;
 
   const existing = created ?? issue?.pull_request ?? null;
   const ready = !!issue && issue.status === "Ready for Pull Request" && !!issue.last_push;

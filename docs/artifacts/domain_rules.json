@@ -1,0 +1,77 @@
+{
+  "status": "draft_pending_team_review",
+  "issues": [
+    {
+      "key": "login_issue",
+      "title": "Masalah login setelah pembaruan",
+      "category": "bug",
+      "severity": "high",
+      "module": "auth",
+      "feature": "login",
+      "recommendation": "Periksa kompatibilitas sesi setelah update.",
+      "phrases": [
+        "tidak bisa login",
+        "gagal login",
+        "login gagal",
+        "login error"
+      ]
+    },
+    {
+      "key": "performance_issue",
+      "title": "Performa aplikasi lambat",
+      "category": "performance",
+      "severity": "medium",
+      "module": "core",
+      "feature": "loading",
+      "recommendation": "Optimalkan query dan caching.",
+      "phrases": [
+        "lambat sekali",
+        "sangat lambat",
+        "loading lama",
+        "tidak responsif"
+      ]
+    },
+    {
+      "key": "crash_issue",
+      "title": "Aplikasi crash atau error",
+      "category": "bug",
+      "severity": "high",
+      "module": "core",
+      "feature": "stability",
+      "recommendation": "Periksa error handling dan logging.",
+      "phrases": [
+        "sering crash",
+        "selalu error",
+        "error terus"
+      ]
+    },
+    {
+      "key": "upload_issue",
+      "title": "Gagal upload dokumen",
+      "category": "bug",
+      "severity": "medium",
+      "module": "document",
+      "feature": "upload",
+      "recommendation": "Periksa batas ukuran file dan format yang didukung.",
+      "phrases": [
+        "gagal upload",
+        "tidak bisa upload",
+        "upload error"
+      ]
+    },
+    {
+      "key": "feature_request",
+      "title": "Permintaan fitur baru",
+      "category": "enhancement",
+      "severity": "low",
+      "module": null,
+      "feature": null,
+      "recommendation": "Evaluasi permintaan fitur pada sprint berikutnya.",
+      "phrases": [
+        "mohon tambah",
+        "tolong tambahkan",
+        "perlu ditambahkan"
+      ]
+    }
+  ]
+}

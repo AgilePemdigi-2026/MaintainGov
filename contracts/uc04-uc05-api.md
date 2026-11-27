@@ -80,7 +80,7 @@ Cookie: <session>
 
 | HTTP | Kode | Kondisi | Fixture |
 | --- | --- | --- | --- |
-| 401 | `GITHUB_UNAUTHORIZED` | GitHub menolak token | `connection-unauthorized.json` |
+| 502 | `GITHUB_UNAUTHORIZED` | GitHub menolak token (401 upstream; tidak boleh memicu logout sesi aplikasi) | `connection-unauthorized.json` |
 | 403 | `GITHUB_FORBIDDEN` | Akses ditolak, bukan rate limit | `connection-forbidden.json` |
 | 404 | `GITHUB_REPOSITORY_NOT_FOUND` | Repository tidak ditemukan/tidak dapat diakses | `connection-not-found.json` |
 | 429 | `GITHUB_RATE_LIMITED` | Rate limit; `error.retry_after_seconds` bila ada | `connection-rate-limited.json` |

@@ -73,13 +73,13 @@ class GitHubConnectionTest extends TestCase
         }
     }
 
-    public function test_github_401_is_returned_as_401_unauthorized(): void
+    public function test_github_401_is_reported_as_upstream_failure_without_expiring_the_session(): void
     {
         Http::fake(['*' => Http::response(['message' => 'Bad credentials'], 401)]);
 
         $this->actingAs($this->developer)
             ->getJson('/api/v1/github/connection')
-            ->assertStatus(401)
+            ->assertStatus(502)
             ->assertJsonPath('success', false)
             ->assertJsonPath('error.code', 'GITHUB_UNAUTHORIZED')
             ->assertJsonPath('data.status', 'unauthorized')

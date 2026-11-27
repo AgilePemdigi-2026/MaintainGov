@@ -17,8 +17,25 @@ interface SessionValue {
 
 const SessionContext = createContext<SessionValue | null>(null);
 
+const GITHUB_ERROR_MESSAGES: Record<string, string> = {
+  GITHUB_UNAUTHORIZED: "Token GitHub tidak valid atau sudah kedaluwarsa. Hubungi admin server.",
+  GITHUB_FORBIDDEN: "Token GitHub tidak memiliki izin yang cukup untuk repository ini.",
+  GITHUB_NOT_CONFIGURED: "Integrasi GitHub belum dikonfigurasi di server.",
+  GITHUB_REPOSITORY_NOT_FOUND: "Repository GitHub tidak ditemukan atau tidak dapat diakses token.",
+  GITHUB_RATE_LIMITED: "Batas permintaan GitHub tercapai. Tunggu sebentar lalu coba lagi.",
+  GITHUB_UNAVAILABLE: "GitHub sedang tidak dapat dihubungi. Coba lagi beberapa saat lagi.",
+  GITHUB_INVALID_RESPONSE: "GitHub mengembalikan respons yang tidak dikenali.",
+  GITHUB_VALIDATION_FAILED: "GitHub menolak permintaan ini.",
+};
+
+/** Error dari integrasi GitHub tidak boleh diperlakukan sebagai sesi aplikasi habis. */
+export function isGitHubError(error: ApiError): boolean {
+  return typeof error.code === "string" && error.code.startsWith("GITHUB_");
+}
+
 export function errorMessage(error: unknown, fallback: string): string {
   if (error instanceof ApiError) {
+    if (error.code && GITHUB_ERROR_MESSAGES[error.code]) return GITHUB_ERROR_MESSAGES[error.code];
     if (error.status === 403) return "Anda tidak memiliki akses untuk aksi ini.";
     if (error.status === 419) return "Sesi kedaluwarsa. Silakan masuk kembali.";
     if (error.status >= 500 && !error.message) return fallback;
@@ -39,7 +56,11 @@ export function SessionProvider({ children }: { children: (user: AuthUser) => Re
   }, [router]);
 
   const handleError = useCallback((error: unknown, fallback: string) => {
-    if (error instanceof ApiError && (error.status === 401 || error.status === 419)) router.replace("/login");
+    if (error instanceof ApiError) {
+      // 401 dari GitHub berarti kredensial server yang salah, bukan sesi browser habis.
+      const sessionExpired = error.status === 419 || (error.status === 401 && !isGitHubError(error));
+      if (sessionExpired) router.replace("/login");
+    }
     return errorMessage(error, fallback);
   }, [router]);
 
