@@ -239,7 +239,7 @@ class PushVerificationTest extends Uc04Uc05TestCase
     public static function githubFailureCases(): array
     {
         return [
-            'unauthorized' => [401, [], 401, 'GITHUB_UNAUTHORIZED'],
+            'unauthorized' => [401, [], 502, 'GITHUB_UNAUTHORIZED'],
             'forbidden' => [403, [], 403, 'GITHUB_FORBIDDEN'],
             'rate limited' => [429, ['Retry-After' => '30'], 429, 'GITHUB_RATE_LIMITED'],
             'server unavailable' => [500, [], 503, 'GITHUB_UNAVAILABLE'],

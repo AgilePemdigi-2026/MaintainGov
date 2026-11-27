@@ -107,7 +107,7 @@ Jika token belum tersedia, adapter tidak mengirim request dan mengembalikan stat
 | Status internal | Kondisi | HTTP | Kode error |
 | --- | --- | --- | --- |
 | `connected` | Repository berhasil dibaca | 200 | — |
-| `unauthorized` | GitHub merespons 401 | 401 | `GITHUB_UNAUTHORIZED` |
+| `unauthorized` | GitHub merespons 401 | 502 | `GITHUB_UNAUTHORIZED` |
 | `forbidden` | GitHub merespons 403 dan bukan rate limit | 403 | `GITHUB_FORBIDDEN` |
 | `rate_limited` | 429, atau 403 dengan header/body rate limit | 429 | `GITHUB_RATE_LIMITED` |
 | `not_found` | 404 (repository tidak ada atau tidak dapat diakses) | 404 | `GITHUB_REPOSITORY_NOT_FOUND` |

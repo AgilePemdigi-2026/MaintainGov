@@ -26,6 +26,14 @@ class GitHubService
 
     private const USER_AGENT = 'MaintainGov/1.0';
 
+    /**
+     * GitHub's 401 means the server-side credential is invalid, not that the
+     * MaintainGov browser session expired. Forwarding 401 to the SPA would
+     * trigger its global session-expiry redirect to /login, so report the
+     * upstream authentication failure as a bad-gateway error instead.
+     */
+    private const UPSTREAM_AUTH_FAILURE_HTTP_STATUS = 502;
+
     /** @var array{login: string, id: int|null}|null */
     private ?array $authenticatedUser = null;
 
@@ -571,7 +579,7 @@ class GitHubService
             $response->status() === 401 => GitHubApiResult::failure(
                 'GITHUB_UNAUTHORIZED',
                 'GitHub authentication failed.',
-                401,
+                self::UPSTREAM_AUTH_FAILURE_HTTP_STATUS,
             ),
             $response->status() === 403 && $this->isRateLimited($response) => $this->rateLimitedApi($response),
             $response->status() === 403 => GitHubApiResult::failure(
@@ -744,7 +752,7 @@ class GitHubService
         return match (true) {
             $response->status() === 401 => $this->error(
                 GitHubConnectionStatus::Unauthorized,
-                401,
+                self::UPSTREAM_AUTH_FAILURE_HTTP_STATUS,
                 'GITHUB_UNAUTHORIZED',
                 'GitHub authentication failed.',
             ),

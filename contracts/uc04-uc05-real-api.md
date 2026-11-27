@@ -692,7 +692,7 @@ Bila `POST /pulls` sukses tetapi penyimpanan DB gagal:
 
 | Kondisi GitHub | HTTP | Kode internal |
 | --- | --- | --- |
-| 401 | 401 | `GITHUB_UNAUTHORIZED` |
+| 401 | 502 | `GITHUB_UNAUTHORIZED` |
 | 403 bukan rate limit | 403 | `GITHUB_FORBIDDEN` |
 | 403 rate limit / 429 | 429 | `GITHUB_RATE_LIMITED` + `retry_after_seconds` bila ada |
 | 404 | 404/422 sesuai konteks | `GITHUB_RESOURCE_NOT_FOUND`, lalu `SOURCE_BRANCH_NOT_FOUND`/`TARGET_BRANCH_NOT_FOUND`/`PUSH_COMMIT_NOT_FOUND` |

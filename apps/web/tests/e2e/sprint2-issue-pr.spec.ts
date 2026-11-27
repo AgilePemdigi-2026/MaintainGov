@@ -195,6 +195,58 @@ test("PR form: GitHub 503 shows connection message and no success", async ({ pag
   await expect(page.getByLabel(/Judul pull request/)).toHaveValue("fix(auth): perbaiki login");
 });
 
+test("PR form: GitHub 401 shows token error and does not log out", async ({ page }) => {
+  await mockApi(page, USERS.developer, ({ method, path }) => {
+    if (method === "GET" && path === "/developer/maintenance-issues/7") return { body: { data: readyForPr() } };
+  });
+  // More specific route registered last, so it wins over the helper's default 200.
+  await page.route("**/api/v1/github/connection", route => route.fulfill({
+    status: 401,
+    contentType: "application/json",
+    body: JSON.stringify({
+      success: false,
+      message: "GitHub authentication failed.",
+      error: { code: "GITHUB_UNAUTHORIZED", message: "GitHub authentication failed." },
+      data: { status: "unauthorized" },
+    }),
+  }));
+
+  await page.goto("/maintenance-issue/7/pull-request");
+
+  await expect(page.getByText("Token GitHub tidak valid atau sudah kedaluwarsa", { exact: false })).toBeVisible();
+  await expect(page).toHaveURL(/\/maintenance-issue\/7\/pull-request$/);
+  await expect(page.getByRole("button", { name: "Coba lagi" })).toBeVisible();
+});
+
+test("verify push: GitHub 401 shows token error and keeps the session", async ({ page }) => {
+  const working = issue({
+    status: "Sedang Dikerjakan",
+    assigned_to: dev,
+    assigned_at: "2026-10-27T08:00:00Z",
+    source_branch: "feature/login-fix",
+  });
+  await mockApi(page, USERS.developer, ({ method, path }) => {
+    if (method === "GET" && path === "/developer/maintenance-issues/7") return { body: { data: working } };
+    if (method === "POST" && path === "/maintenance-backlogs/7/push-verifications") {
+      return {
+        status: 401,
+        body: {
+          success: false,
+          message: "GitHub authentication failed.",
+          error: { code: "GITHUB_UNAUTHORIZED", message: "GitHub authentication failed." },
+          data: null,
+        },
+      };
+    }
+  });
+
+  await page.goto("/maintenance-issue/7");
+  await page.getByRole("button", { name: "Verifikasi push GitHub" }).click();
+
+  await expect(page.getByText("Token GitHub tidak valid atau sudah kedaluwarsa", { exact: false })).toBeVisible();
+  await expect(page).toHaveURL(/\/maintenance-issue\/7$/);
+});
+
 test("mobile 375x812 shows the issue list heading", async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
   await mockApi(page, USERS.developer, ({ method, path }) => {

@@ -71,14 +71,14 @@ class GitHubServiceTest extends TestCase
         );
     }
 
-    public function test_401_maps_to_unauthorized(): void
+    public function test_401_maps_to_unauthorized_upstream_failure(): void
     {
         Http::fake(['*' => Http::response(['message' => 'Bad credentials'], 401)]);
 
         $result = $this->service()->checkConnection();
 
         $this->assertSame(GitHubConnectionStatus::Unauthorized, $result->status);
-        $this->assertSame(401, $result->httpStatus);
+        $this->assertSame(502, $result->httpStatus);
         $this->assertSame('GITHUB_UNAUTHORIZED', $result->errorCode);
         $this->assertSame('GitHub authentication failed.', $result->errorMessage);
         $this->assertNull($result->repository);
@@ -344,7 +344,7 @@ class GitHubServiceTest extends TestCase
         $result = $this->service()->getPullRequest(42);
 
         $this->assertFalse($result->success);
-        $this->assertSame(401, $result->httpStatus);
+        $this->assertSame(502, $result->httpStatus);
         $this->assertSame('GITHUB_UNAUTHORIZED', $result->errorCode);
     }
 

@@ -65,7 +65,7 @@ Pada arsitektur Fine-grained PAT, token server dimiliki oleh satu akun GitHub. S
 
 | Kondisi | Respon GitHub | Penanganan di MaintainGov |
 |---|---|---|
-| **401 Unauthorized** | Token tidak valid/kedaluwarsa | Mengembalikan `GITHUB_UNAUTHORIZED` (HTTP 401), meminta admin memperbarui token. |
+| **401 Unauthorized** | Token tidak valid/kedaluwarsa | Mengembalikan `GITHUB_UNAUTHORIZED` (HTTP 502), meminta admin memperbarui token. HTTP 401 sengaja tidak dipakai agar frontend tidak salah menganggap sesi pengguna habis. |
 | **403 Forbidden** | Kurang izin repositori | Mengembalikan `GITHUB_FORBIDDEN` (HTTP 403), merinci izin yang kurang. |
 | **429 / Rate Limited** | Limit request tercapai | Membaca header `X-RateLimit-Reset` dan `Retry-After`. Mengembalikan `GITHUB_RATE_LIMITED` (HTTP 429) dengan waktu tunggu yang aman. |
 | **5xx / Timeout** | Gangguan server GitHub | Menghindari blind-retry pada operasi non-idempoten (seperti `POST review`). Sistem melakukan rekonsiliasi membaca status terlebih dahulu sebelum mengulang. |
